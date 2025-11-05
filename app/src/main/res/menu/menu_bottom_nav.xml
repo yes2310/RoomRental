@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:id="@+id/menu_rooms"
+        android:icon="@android:drawable/ic_menu_myplaces"
+        android:title="@string/menu_rooms" />
+    <item
+        android:id="@+id/menu_calendar"
+        android:icon="@android:drawable/ic_menu_month"
+        android:title="@string/menu_calendar" />
+    <item
+        android:id="@+id/menu_qr"
+        android:icon="@android:drawable/ic_menu_camera"
+        android:title="@string/menu_qr" />
+    <item
+        android:id="@+id/menu_my"
+        android:icon="@android:drawable/ic_menu_agenda"
+        android:title="@string/menu_my" />
+    <item
+        android:id="@+id/menu_profile"
+        android:icon="@android:drawable/ic_menu_manage"
+        android:title="@string/menu_profile" />
+</menu>
