@@ -42,8 +42,19 @@
         android:padding="16dp"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintBottom_toTopOf="@id/bottomNav"
+        app:layout_constraintBottom_toTopOf="@id/bottomNavDivider"
         app:layout_constraintTop_toBottomOf="@id/toolbarDivider" />
+
+    <!-- Bottom Navigation 위 미세한 구분선 -->
+    <View
+        android:id="@+id/bottomNavDivider"
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="@color/outline_variant"
+        android:alpha="0.5"
+        app:layout_constraintBottom_toTopOf="@id/bottomNav"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
 
     <com.google.android.material.bottomnavigation.BottomNavigationView
         android:id="@+id/bottomNav"
@@ -51,7 +62,7 @@
         android:layout_height="wrap_content"
         android:layout_gravity="bottom"
         android:background="@color/surface"
-        android:elevation="8dp"
+        android:elevation="0dp"
         app:itemIconTint="@color/nav_item_color"
         app:itemRippleColor="@color/ripple"
         app:itemTextColor="@color/nav_item_color"

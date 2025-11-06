@@ -2,35 +2,36 @@
 <resources>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
-    <color name="primary">#0D47A1</color>
+    <!-- Modern blue palette -->
+    <color name="primary">#2196F3</color>
     <color name="on_primary">#FFFFFF</color>
-    <color name="primary_container">#D6E3FF</color>
-    <color name="on_primary_container">#001B3D</color>
+    <color name="primary_container">#E3F2FD</color>
+    <color name="on_primary_container">#0D47A1</color>
 
-    <color name="secondary">#4CAF50</color>
+    <color name="secondary">#10B981</color>
     <color name="on_secondary">#FFFFFF</color>
-    <color name="secondary_container">#D1F4D3</color>
+    <color name="secondary_container">#D1FAE5</color>
 
-    <color name="tertiary">#FF9800</color>
-    <color name="tertiary_container">#FFE0B2</color>
+    <color name="tertiary">#F59E0B</color>
+    <color name="tertiary_container">#FEF3C7</color>
 
-    <color name="error">#D32F2F</color>
-    <color name="error_container">#FFCDD2</color>
+    <color name="error">#EF4444</color>
+    <color name="error_container">#FEE2E2</color>
 
-    <color name="background">#FBFCFE</color>
-    <color name="on_background">#1A1C1E</color>
+    <color name="background">#F8FAFC</color>
+    <color name="on_background">#1E293B</color>
     <color name="surface">#FFFFFF</color>
-    <color name="on_surface">#1A1C1E</color>
-    <color name="surface_variant">#E1E2EC</color>
-    <color name="on_surface_variant">#44464F</color>
+    <color name="on_surface">#1E293B</color>
+    <color name="surface_variant">#F1F5F9</color>
+    <color name="on_surface_variant">#64748B</color>
 
-    <color name="outline">#75777F</color>
-    <color name="outline_variant">#C5C6D0</color>
+    <color name="outline">#94A3B8</color>
+    <color name="outline_variant">#E2E8F0</color>
 
-    <color name="status_available">#4CAF50</color>
-    <color name="status_reserved">#D32F2F</color>
-    <color name="status_pending">#FF9800</color>
-    <color name="status_checked_in">#1976D2</color>
+    <color name="status_available">#10B981</color>
+    <color name="status_reserved">#EF4444</color>
+    <color name="status_pending">#F59E0B</color>
+    <color name="status_checked_in">#2196F3</color>
 
-    <color name="ripple">#1A0D47A1</color>
+    <color name="ripple">#1A2196F3</color>
 </resources>
