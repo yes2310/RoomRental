@@ -16,8 +16,10 @@ import com.example.bangbillija.core.SharedReservationViewModel;
 import com.example.bangbillija.databinding.FragmentRoomListBinding;
 import com.example.bangbillija.model.Room;
 import com.example.bangbillija.model.RoomStatus;
+import com.example.bangbillija.service.AuthManager;
 import com.example.bangbillija.ui.Navigator;
 import com.example.bangbillija.util.SimpleTextWatcher;
+import com.google.android.material.snackbar.Snackbar;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -29,6 +31,7 @@ public class RoomListFragment extends Fragment implements RoomListAdapter.RoomCl
     private FragmentRoomListBinding binding;
     private SharedReservationViewModel viewModel;
     private RoomListAdapter adapter;
+    private AuthManager authManager;
     private List<Room> currentRooms = new ArrayList<>();
 
     @Nullable
@@ -43,6 +46,7 @@ public class RoomListFragment extends Fragment implements RoomListAdapter.RoomCl
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
         viewModel = new ViewModelProvider(requireActivity()).get(SharedReservationViewModel.class);
+        authManager = AuthManager.getInstance();
 
         adapter = new RoomListAdapter(this);
         binding.recyclerRooms.setLayoutManager(new LinearLayoutManager(requireContext()));
@@ -50,6 +54,42 @@ public class RoomListFragment extends Fragment implements RoomListAdapter.RoomCl
 
         binding.inputSearch.addTextChangedListener(new SimpleTextWatcher(text -> applyFilter()));
         binding.chipGroup.setOnCheckedStateChangeListener((group, checkedId) -> applyFilter());
+
+        // 관리자인 경우 FAB 표시
+        boolean isAdmin = authManager.isAdmin();
+        android.util.Log.d("RoomListFragment", "=== Is Admin: " + isAdmin + " ===");
+
+        if (isAdmin) {
+            android.util.Log.d("RoomListFragment", "Setting up FAB for admin");
+
+            binding.fabAddRoom.setVisibility(View.VISIBLE);
+            binding.fabAddRoom.setClickable(true);
+            binding.fabAddRoom.setEnabled(true);
+
+            // 버튼이 제대로 설정되었는지 확인
+            binding.fabAddRoom.post(() -> {
+                android.util.Log.d("RoomListFragment", "FAB Visibility: " + binding.fabAddRoom.getVisibility());
+                android.util.Log.d("RoomListFragment", "FAB Clickable: " + binding.fabAddRoom.isClickable());
+                android.util.Log.d("RoomListFragment", "FAB Enabled: " + binding.fabAddRoom.isEnabled());
+            });
+
+            binding.fabAddRoom.setOnClickListener(v -> {
+                android.util.Log.d("RoomListFragment", "========== FAB CLICKED! ==========");
+
+                if (getActivity() instanceof Navigator) {
+                    android.util.Log.d("RoomListFragment", "Opening add room screen");
+                    ((Navigator) getActivity()).openAddRoom();
+                } else {
+                    android.util.Log.e("RoomListFragment", "Activity is not Navigator!");
+                    Snackbar.make(binding.getRoot(), "Navigation 오류", Snackbar.LENGTH_LONG).show();
+                }
+            });
+
+            android.util.Log.d("RoomListFragment", "FAB setup complete");
+        } else {
+            android.util.Log.d("RoomListFragment", "User is not admin, hiding FAB");
+            binding.fabAddRoom.setVisibility(View.GONE);
+        }
 
         viewModel.getRooms().observe(getViewLifecycleOwner(), rooms -> {
             currentRooms = rooms;

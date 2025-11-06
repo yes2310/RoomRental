@@ -45,12 +45,20 @@ public class ProfileFragment extends Fragment {
             binding.textDisplayName.setText("-");
             binding.textEmail.setText("-");
             binding.textLastLogin.setText("");
+            binding.chipAdminBadge.setVisibility(View.GONE);
             return;
         }
 
         String name = user.getDisplayName();
         binding.textDisplayName.setText(name == null || name.trim().isEmpty() ? "사용자" : name);
         binding.textEmail.setText(user.getEmail());
+
+        // 관리자 배지 표시
+        if (authManager.isAdmin()) {
+            binding.chipAdminBadge.setVisibility(View.VISIBLE);
+        } else {
+            binding.chipAdminBadge.setVisibility(View.GONE);
+        }
 
         if (user.getMetadata() != null && user.getMetadata().getLastSignInTimestamp() > 0) {
             String formatted = DateFormat.getDateTimeInstance().format(

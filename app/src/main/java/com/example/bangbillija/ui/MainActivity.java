@@ -15,9 +15,11 @@ import com.example.bangbillija.core.SharedReservationViewModel;
 import com.example.bangbillija.service.AuthManager;
 import com.example.bangbillija.ui.calendar.CalendarFragment;
 import com.example.bangbillija.ui.checkin.QrCheckInFragment;
+import com.example.bangbillija.ui.reservations.CreateReservationFragment;
 import com.example.bangbillija.ui.reservations.MyReservationsFragment;
 import com.example.bangbillija.ui.reservations.ProfileFragment;
 import com.example.bangbillija.ui.reservations.ReservationDetailFragment;
+import com.example.bangbillija.ui.rooms.AddRoomFragment;
 import com.example.bangbillija.ui.rooms.RoomListFragment;
 import com.example.bangbillija.ui.auth.LoginActivity;
 import com.google.android.material.appbar.MaterialToolbar;
@@ -36,6 +38,8 @@ public class MainActivity extends AppCompatActivity implements Navigator {
     private final Fragment myReservationsFragment = new MyReservationsFragment();
     private final Fragment detailFragment = new ReservationDetailFragment();
     private final Fragment profileFragment = new ProfileFragment();
+    private final Fragment createReservationFragment = new CreateReservationFragment();
+    private final Fragment addRoomFragment = new AddRoomFragment();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -90,22 +94,30 @@ public class MainActivity extends AppCompatActivity implements Navigator {
     }
 
     private void switchTo(@NonNull Fragment fragment, @NonNull String title, boolean addToBackStack) {
-        if (addToBackStack) {
-            getSupportFragmentManager()
-                    .beginTransaction()
-                    .setCustomAnimations(R.anim.fragment_fade_in, R.anim.fragment_fade_out,
-                            R.anim.fragment_fade_in, R.anim.fragment_fade_out)
-                    .replace(R.id.fragmentContainer, fragment)
-                    .addToBackStack(fragment.getClass().getSimpleName())
-                    .commit();
-        } else {
-            getSupportFragmentManager()
-                    .beginTransaction()
-                    .setCustomAnimations(R.anim.fragment_fade_in, R.anim.fragment_fade_out)
-                    .replace(R.id.fragmentContainer, fragment)
-                    .commit();
+        android.util.Log.d("MainActivity", "switchTo called: " + fragment.getClass().getSimpleName() + ", title: " + title + ", addToBackStack: " + addToBackStack);
+
+        try {
+            if (addToBackStack) {
+                getSupportFragmentManager()
+                        .beginTransaction()
+                        .setCustomAnimations(R.anim.fragment_fade_in, R.anim.fragment_fade_out,
+                                R.anim.fragment_fade_in, R.anim.fragment_fade_out)
+                        .replace(R.id.fragmentContainer, fragment)
+                        .addToBackStack(fragment.getClass().getSimpleName())
+                        .commit();
+            } else {
+                getSupportFragmentManager()
+                        .beginTransaction()
+                        .setCustomAnimations(R.anim.fragment_fade_in, R.anim.fragment_fade_out)
+                        .replace(R.id.fragmentContainer, fragment)
+                        .commit();
+            }
+            viewModel.updateToolbarTitle(title);
+            android.util.Log.d("MainActivity", "Fragment switch successful");
+        } catch (Exception e) {
+            android.util.Log.e("MainActivity", "Fragment switch failed", e);
+            android.widget.Toast.makeText(this, "화면 전환 실패: " + e.getMessage(), android.widget.Toast.LENGTH_LONG).show();
         }
-        viewModel.updateToolbarTitle(title);
     }
 
     @Override
@@ -124,13 +136,52 @@ public class MainActivity extends AppCompatActivity implements Navigator {
         bottomNavigationView.setSelectedItemId(R.id.menu_qr);
     }
 
+    @Override
+    public void openCreateReservation() {
+        // Fragment를 새로 생성하여 사용
+        Fragment newCreateReservationFragment = new CreateReservationFragment();
+        switchTo(newCreateReservationFragment, getString(R.string.title_create_reservation), true);
+    }
+
+    @Override
+    public void openAddRoom() {
+        android.util.Log.d("MainActivity", "========== openAddRoom called ==========");
+
+        // Fragment를 새로 생성하여 사용
+        Fragment newAddRoomFragment = new AddRoomFragment();
+        android.util.Log.d("MainActivity", "AddRoomFragment created: " + newAddRoomFragment);
+
+        // 애니메이션 없이 직접 전환 시도
+        try {
+            getSupportFragmentManager()
+                    .beginTransaction()
+                    .replace(R.id.fragmentContainer, newAddRoomFragment)
+                    .addToBackStack("AddRoomFragment")
+                    .commitAllowingStateLoss();
+
+            viewModel.updateToolbarTitle("강의실 등록");
+            android.util.Log.d("MainActivity", "Fragment replacement committed successfully");
+        } catch (Exception e) {
+            android.util.Log.e("MainActivity", "Fragment replacement failed", e);
+            android.widget.Toast.makeText(this, "전환 실패: " + e.getMessage(), android.widget.Toast.LENGTH_LONG).show();
+        }
+    }
+
     private void syncToolbarWithBackStack() {
         FragmentManager fm = getSupportFragmentManager();
         Fragment fragment = fm.findFragmentById(R.id.fragmentContainer);
         if (fragment == null) return;
 
+        android.util.Log.d("MainActivity", "syncToolbarWithBackStack: " + fragment.getClass().getSimpleName());
+
         if (fragment instanceof ReservationDetailFragment) {
             viewModel.updateToolbarTitle(getString(R.string.title_reservation_detail));
+        } else if (fragment instanceof AddRoomFragment) {
+            // AddRoomFragment - 이미 타이틀이 설정되어 있고, bottom nav는 변경하지 않음
+            android.util.Log.d("MainActivity", "AddRoomFragment detected, skipping bottom nav update");
+        } else if (fragment instanceof CreateReservationFragment) {
+            // CreateReservationFragment - 이미 타이틀이 설정되어 있고, bottom nav는 변경하지 않음
+            android.util.Log.d("MainActivity", "CreateReservationFragment detected, skipping bottom nav update");
         } else if (fragment instanceof CalendarFragment) {
             viewModel.updateToolbarTitle(getString(R.string.title_calendar));
             bottomNavigationView.setSelectedItemId(R.id.menu_calendar);

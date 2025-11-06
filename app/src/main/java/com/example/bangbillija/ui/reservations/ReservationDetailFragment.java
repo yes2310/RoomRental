@@ -1,5 +1,6 @@
 package com.example.bangbillija.ui.reservations;
 
+import android.graphics.Bitmap;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -12,13 +13,18 @@ import androidx.lifecycle.ViewModelProvider;
 
 import com.example.bangbillija.R;
 import com.example.bangbillija.core.SharedReservationViewModel;
+import com.example.bangbillija.data.ReservationRepository;
 import com.example.bangbillija.databinding.FragmentReservationDetailBinding;
 import com.example.bangbillija.databinding.ItemDetailRowBinding;
 import com.example.bangbillija.model.Reservation;
 import com.example.bangbillija.model.ReservationStatus;
 import com.example.bangbillija.model.Room;
+import com.example.bangbillija.service.FirestoreManager;
 import com.example.bangbillija.ui.Navigator;
+import com.example.bangbillija.util.QRCodeUtil;
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.snackbar.Snackbar;
+import com.google.zxing.WriterException;
 
 import androidx.core.content.ContextCompat;
 
@@ -29,6 +35,7 @@ public class ReservationDetailFragment extends Fragment {
 
     private FragmentReservationDetailBinding binding;
     private SharedReservationViewModel viewModel;
+    private ReservationRepository reservationRepository;
     private Room currentRoom;
     private Reservation currentReservation;
 
@@ -47,6 +54,7 @@ public class ReservationDetailFragment extends Fragment {
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
         viewModel = new ViewModelProvider(requireActivity()).get(SharedReservationViewModel.class);
+        reservationRepository = ReservationRepository.getInstance();
 
         viewModel.getSelectedRoom().observe(getViewLifecycleOwner(), room -> {
             currentRoom = room;
@@ -68,8 +76,8 @@ public class ReservationDetailFragment extends Fragment {
             }
         });
 
-        binding.buttonEdit.setOnClickListener(v -> Snackbar.make(v, "수정 기능은 곧 제공될 예정입니다", Snackbar.LENGTH_SHORT).show());
-        binding.buttonCancel.setOnClickListener(v -> Snackbar.make(v, "취소 요청이 전송되었습니다", Snackbar.LENGTH_SHORT).show());
+        binding.buttonEdit.setOnClickListener(v -> showEditDialog());
+        binding.buttonCancel.setOnClickListener(v -> showCancelDialog());
     }
 
     private void render() {
@@ -111,6 +119,32 @@ public class ReservationDetailFragment extends Fragment {
         addRow("참석 인원", currentReservation.getAttendees() + "명");
         addRow("예약자", currentReservation.getOwner());
         addRow("목적", currentReservation.getNote());
+
+        // QR 코드 생성 및 표시 (PENDING 또는 RESERVED 상태일 때만)
+        if (currentReservation.getStatus() == ReservationStatus.PENDING ||
+                currentReservation.getStatus() == ReservationStatus.RESERVED) {
+            generateAndDisplayQRCode();
+        } else {
+            binding.cardQrCode.setVisibility(View.GONE);
+        }
+    }
+
+    private void generateAndDisplayQRCode() {
+        try {
+            String qrContent = QRCodeUtil.createReservationQRContent(
+                    currentReservation.getId(),
+                    currentRoom.getId(),
+                    currentReservation.getDate().format(DateTimeFormatter.ISO_LOCAL_DATE),
+                    currentReservation.getStartTime().format(timeFormatter)
+            );
+
+            Bitmap qrBitmap = QRCodeUtil.generateQRCode(qrContent, 500, 500);
+            binding.imageQrCode.setImageBitmap(qrBitmap);
+            binding.cardQrCode.setVisibility(View.VISIBLE);
+        } catch (WriterException e) {
+            android.util.Log.e("ReservationDetail", "QR 코드 생성 실패", e);
+            binding.cardQrCode.setVisibility(View.GONE);
+        }
     }
 
     private void addRow(String label, String value) {
@@ -142,6 +176,109 @@ public class ReservationDetailFragment extends Fragment {
             binding.textReservationStatus.setTextColor(ContextCompat.getColor(requireContext(), R.color.status_reserved));
             binding.textReservationStatus.setBackgroundResource(R.drawable.bg_status_reserved);
         }
+    }
+
+    private void showEditDialog() {
+        if (currentReservation == null) {
+            Snackbar.make(binding.getRoot(), "예약을 선택하세요", Snackbar.LENGTH_SHORT).show();
+            return;
+        }
+
+        // 간단한 수정: 참석 인원과 메모만 수정 가능
+        View dialogView = getLayoutInflater().inflate(R.layout.dialog_edit_reservation, null);
+        com.google.android.material.textfield.TextInputEditText inputAttendees =
+                dialogView.findViewById(R.id.inputAttendeesEdit);
+        com.google.android.material.textfield.TextInputEditText inputNote =
+                dialogView.findViewById(R.id.inputNoteEdit);
+
+        inputAttendees.setText(String.valueOf(currentReservation.getAttendees()));
+        inputNote.setText(currentReservation.getNote());
+
+        new MaterialAlertDialogBuilder(requireContext())
+                .setTitle("예약 수정")
+                .setView(dialogView)
+                .setPositiveButton("수정", (dialog, which) -> {
+                    String attendeesStr = inputAttendees.getText() != null ?
+                            inputAttendees.getText().toString().trim() : "";
+                    String note = inputNote.getText() != null ?
+                            inputNote.getText().toString().trim() : "";
+
+                    if (attendeesStr.isEmpty()) {
+                        Snackbar.make(binding.getRoot(), "참석 인원을 입력하세요", Snackbar.LENGTH_SHORT).show();
+                        return;
+                    }
+
+                    int attendees;
+                    try {
+                        attendees = Integer.parseInt(attendeesStr);
+                        if (attendees <= 0) {
+                            Snackbar.make(binding.getRoot(), "참석 인원은 1명 이상이어야 합니다", Snackbar.LENGTH_SHORT).show();
+                            return;
+                        }
+                    } catch (NumberFormatException e) {
+                        Snackbar.make(binding.getRoot(), "올바른 숫자를 입력하세요", Snackbar.LENGTH_SHORT).show();
+                        return;
+                    }
+
+                    java.util.Map<String, Object> updates = new java.util.HashMap<>();
+                    updates.put("attendees", attendees);
+                    updates.put("note", note);
+
+                    reservationRepository.updateReservationByReservationId(
+                            currentReservation.getId(),
+                            updates,
+                            new FirestoreManager.FirestoreCallback<Void>() {
+                                @Override
+                                public void onSuccess(Void result) {
+                                    Snackbar.make(binding.getRoot(), "예약이 수정되었습니다", Snackbar.LENGTH_SHORT).show();
+                                    if (getActivity() != null) {
+                                        requireActivity().onBackPressed();
+                                    }
+                                }
+
+                                @Override
+                                public void onFailure(Exception e) {
+                                    Snackbar.make(binding.getRoot(), "수정 실패: " + e.getMessage(),
+                                            Snackbar.LENGTH_LONG).show();
+                                }
+                            }
+                    );
+                })
+                .setNegativeButton("취소", null)
+                .show();
+    }
+
+    private void showCancelDialog() {
+        if (currentReservation == null) {
+            Snackbar.make(binding.getRoot(), "예약을 선택하세요", Snackbar.LENGTH_SHORT).show();
+            return;
+        }
+
+        new MaterialAlertDialogBuilder(requireContext())
+                .setTitle("예약 취소")
+                .setMessage("정말 이 예약을 취소하시겠습니까?\n취소된 예약은 복구할 수 없습니다.")
+                .setPositiveButton("취소하기", (dialog, which) -> {
+                    reservationRepository.cancelReservationByReservationId(
+                            currentReservation.getId(),
+                            new FirestoreManager.FirestoreCallback<Void>() {
+                                @Override
+                                public void onSuccess(Void result) {
+                                    Snackbar.make(binding.getRoot(), "예약이 취소되었습니다", Snackbar.LENGTH_SHORT).show();
+                                    if (getActivity() != null) {
+                                        requireActivity().onBackPressed();
+                                    }
+                                }
+
+                                @Override
+                                public void onFailure(Exception e) {
+                                    Snackbar.make(binding.getRoot(), "취소 실패: " + e.getMessage(),
+                                            Snackbar.LENGTH_LONG).show();
+                                }
+                            }
+                    );
+                })
+                .setNegativeButton("돌아가기", null)
+                .show();
     }
 
     @Override

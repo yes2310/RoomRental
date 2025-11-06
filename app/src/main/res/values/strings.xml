@@ -5,6 +5,7 @@
     <string name="title_qr">QR 체크인</string>
     <string name="title_my_reservations">내 예약</string>
     <string name="title_reservation_detail">예약 상세</string>
+    <string name="title_create_reservation">새 예약 만들기</string>
     <string name="menu_rooms">강의실</string>
     <string name="menu_calendar">캘린더</string>
     <string name="menu_qr">체크인</string>

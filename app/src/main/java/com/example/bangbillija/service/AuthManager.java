@@ -4,10 +4,20 @@ import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.auth.UserProfileChangeRequest;
 
+import java.util.Arrays;
+import java.util.List;
+
 public class AuthManager {
 
     private static AuthManager instance;
     private final FirebaseAuth auth = FirebaseAuth.getInstance();
+
+    // 관리자 이메일 목록 (하드코딩)
+    private static final List<String> ADMIN_EMAILS = Arrays.asList(
+            "admin@bangbillija.com",
+            "admin@example.com",
+            "admin@admin.com"
+    );
 
     public static synchronized AuthManager getInstance() {
         if (instance == null) {
@@ -64,6 +74,14 @@ public class AuthManager {
 
     public void signOut() {
         auth.signOut();
+    }
+
+    public boolean isAdmin() {
+        FirebaseUser user = currentUser();
+        if (user == null || user.getEmail() == null) {
+            return false;
+        }
+        return ADMIN_EMAILS.contains(user.getEmail().toLowerCase());
     }
 
     public interface Completion {

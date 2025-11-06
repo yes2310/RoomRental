@@ -48,8 +48,11 @@ public class MyReservationsFragment extends Fragment implements MyReservationsAd
         binding.recyclerReservations.setAdapter(adapter);
 
         binding.chipGroupFilters.setOnCheckedStateChangeListener((group, ids) -> refreshList());
-        binding.buttonCreateReservation.setOnClickListener(v ->
-                Snackbar.make(v, "새 예약 기능은 아직 구현되지 않았습니다", Snackbar.LENGTH_SHORT).show());
+        binding.buttonCreateReservation.setOnClickListener(v -> {
+            if (getActivity() instanceof Navigator) {
+                ((Navigator) getActivity()).openCreateReservation();
+            }
+        });
 
         viewModel.getUpcomingReservations().observe(getViewLifecycleOwner(), reservations -> {
             upcoming = reservations;

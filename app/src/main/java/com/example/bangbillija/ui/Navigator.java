@@ -4,4 +4,6 @@ public interface Navigator {
     void openReservationDetail();
     void navigateBackToRooms();
     void openQrScanner();
+    void openCreateReservation();
+    void openAddRoom();
 }

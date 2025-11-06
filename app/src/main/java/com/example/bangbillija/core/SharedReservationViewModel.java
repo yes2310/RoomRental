@@ -90,6 +90,16 @@ public class SharedReservationViewModel extends ViewModel {
             timeSlots.setValue(Collections.emptyList());
             return;
         }
-        timeSlots.setValue(reservationRepository.buildSlotsFor(room.getId(), date));
+        reservationRepository.buildSlotsFor(room.getId(), date, new com.example.bangbillija.service.FirestoreManager.FirestoreCallback<List<TimeSlot>>() {
+            @Override
+            public void onSuccess(List<TimeSlot> result) {
+                timeSlots.setValue(result);
+            }
+
+            @Override
+            public void onFailure(Exception e) {
+                timeSlots.setValue(Collections.emptyList());
+            }
+        });
     }
 }
