@@ -6,4 +6,11 @@
     </style>
 
     <style name="Theme.Bangbillija" parent="Base.Theme.Bangbillija" />
+
+    <!-- Modern Toolbar Title Style -->
+    <style name="ToolbarTitleText" parent="TextAppearance.Material3.TitleLarge">
+        <item name="android:textSize">20sp</item>
+        <item name="android:fontFamily">sans-serif-medium</item>
+        <item name="android:letterSpacing">0.01</item>
+    </style>
 </resources>
