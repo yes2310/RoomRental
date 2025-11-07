@@ -22,12 +22,13 @@ import com.example.bangbillija.ui.reservations.ReservationDetailFragment;
 import com.example.bangbillija.ui.rooms.AddRoomFragment;
 import com.example.bangbillija.ui.rooms.RoomListFragment;
 import com.example.bangbillija.ui.auth.LoginActivity;
-import com.google.android.material.appbar.MaterialToolbar;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
+
+import android.widget.TextView;
 
 public class MainActivity extends AppCompatActivity implements Navigator {
 
-    private MaterialToolbar topAppBar;
+    private TextView toolbarTitle;
     private BottomNavigationView bottomNavigationView;
     private SharedReservationViewModel viewModel;
     private AuthManager authManager;
@@ -53,15 +54,13 @@ public class MainActivity extends AppCompatActivity implements Navigator {
             return;
         }
 
-        topAppBar = findViewById(R.id.topAppBar);
+        toolbarTitle = findViewById(R.id.toolbarTitle);
         bottomNavigationView = findViewById(R.id.bottomNav);
-
-        setSupportActionBar(topAppBar);
 
         viewModel = new ViewModelProvider(this).get(SharedReservationViewModel.class);
         viewModel.getToolbarTitle().observe(this, title -> {
             if (title != null) {
-                topAppBar.setTitle(title);
+                toolbarTitle.setText(title);
             }
         });
 
