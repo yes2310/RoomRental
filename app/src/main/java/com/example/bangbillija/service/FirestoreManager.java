@@ -4,11 +4,13 @@ import com.example.bangbillija.model.Reservation;
 import com.example.bangbillija.model.ReservationStatus;
 import com.example.bangbillija.model.Room;
 import com.example.bangbillija.model.RoomStatus;
+import com.example.bangbillija.model.TimetableEntry;
 import com.google.firebase.Timestamp;
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.Query;
 
+import java.time.DayOfWeek;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -26,6 +28,7 @@ public class FirestoreManager {
 
     private static final String COLLECTION_ROOMS = "rooms";
     private static final String COLLECTION_RESERVATIONS = "reservations";
+    private static final String COLLECTION_TIMETABLE = "timetable";
 
     private FirestoreManager() {
         db = FirebaseFirestore.getInstance();
@@ -185,6 +188,109 @@ public class FirestoreManager {
                 .addOnFailureListener(callback::onFailure);
     }
 
+    // ==================== Timetable Operations ====================
+
+    public void addTimetableEntry(TimetableEntry entry, FirestoreCallback<Void> callback) {
+        Map<String, Object> data = timetableEntryToMap(entry);
+        db.collection(COLLECTION_TIMETABLE)
+                .document(entry.getId())
+                .set(data)
+                .addOnSuccessListener(aVoid -> callback.onSuccess(null))
+                .addOnFailureListener(callback::onFailure);
+    }
+
+    public void addTimetableEntries(List<TimetableEntry> entries, FirestoreCallback<Void> callback) {
+        if (entries.isEmpty()) {
+            callback.onSuccess(null);
+            return;
+        }
+
+        // Firestore batch write (최대 500개)
+        com.google.firebase.firestore.WriteBatch batch = db.batch();
+        for (TimetableEntry entry : entries) {
+            Map<String, Object> data = timetableEntryToMap(entry);
+            batch.set(db.collection(COLLECTION_TIMETABLE).document(entry.getId()), data);
+        }
+
+        batch.commit()
+                .addOnSuccessListener(aVoid -> callback.onSuccess(null))
+                .addOnFailureListener(callback::onFailure);
+    }
+
+    public void getAllTimetableEntries(FirestoreCallback<List<TimetableEntry>> callback) {
+        db.collection(COLLECTION_TIMETABLE)
+                .get()
+                .addOnSuccessListener(querySnapshot -> {
+                    List<TimetableEntry> entries = new ArrayList<>();
+                    for (DocumentSnapshot doc : querySnapshot.getDocuments()) {
+                        TimetableEntry entry = documentToTimetableEntry(doc);
+                        if (entry != null) {
+                            entries.add(entry);
+                        }
+                    }
+                    callback.onSuccess(entries);
+                })
+                .addOnFailureListener(callback::onFailure);
+    }
+
+    public void getTimetableEntriesForRoom(String roomId, FirestoreCallback<List<TimetableEntry>> callback) {
+        db.collection(COLLECTION_TIMETABLE)
+                .whereEqualTo("roomId", roomId)
+                .get()
+                .addOnSuccessListener(querySnapshot -> {
+                    List<TimetableEntry> entries = new ArrayList<>();
+                    for (DocumentSnapshot doc : querySnapshot.getDocuments()) {
+                        TimetableEntry entry = documentToTimetableEntry(doc);
+                        if (entry != null) {
+                            entries.add(entry);
+                        }
+                    }
+                    callback.onSuccess(entries);
+                })
+                .addOnFailureListener(callback::onFailure);
+    }
+
+    public void getTimetableEntriesForRoomAndDay(String roomId, DayOfWeek dayOfWeek, FirestoreCallback<List<TimetableEntry>> callback) {
+        db.collection(COLLECTION_TIMETABLE)
+                .whereEqualTo("roomId", roomId)
+                .whereEqualTo("dayOfWeek", dayOfWeek.name())
+                .get()
+                .addOnSuccessListener(querySnapshot -> {
+                    List<TimetableEntry> entries = new ArrayList<>();
+                    for (DocumentSnapshot doc : querySnapshot.getDocuments()) {
+                        TimetableEntry entry = documentToTimetableEntry(doc);
+                        if (entry != null) {
+                            entries.add(entry);
+                        }
+                    }
+                    callback.onSuccess(entries);
+                })
+                .addOnFailureListener(callback::onFailure);
+    }
+
+    public void deleteTimetableEntry(String entryId, FirestoreCallback<Void> callback) {
+        db.collection(COLLECTION_TIMETABLE)
+                .document(entryId)
+                .delete()
+                .addOnSuccessListener(aVoid -> callback.onSuccess(null))
+                .addOnFailureListener(callback::onFailure);
+    }
+
+    public void deleteAllTimetableEntries(FirestoreCallback<Void> callback) {
+        db.collection(COLLECTION_TIMETABLE)
+                .get()
+                .addOnSuccessListener(querySnapshot -> {
+                    com.google.firebase.firestore.WriteBatch batch = db.batch();
+                    for (DocumentSnapshot doc : querySnapshot.getDocuments()) {
+                        batch.delete(doc.getReference());
+                    }
+                    batch.commit()
+                            .addOnSuccessListener(aVoid -> callback.onSuccess(null))
+                            .addOnFailureListener(callback::onFailure);
+                })
+                .addOnFailureListener(callback::onFailure);
+    }
+
     // ==================== Conversion Utilities ====================
 
     private Room documentToRoom(DocumentSnapshot doc) {
@@ -260,6 +366,48 @@ public class FirestoreManager {
         data.put("attendees", reservation.getAttendees());
         data.put("status", reservation.getStatus().name());
         data.put("note", reservation.getNote() != null ? reservation.getNote() : "");
+        data.put("createdAt", Timestamp.now());
+        data.put("updatedAt", Timestamp.now());
+        return data;
+    }
+
+    private TimetableEntry documentToTimetableEntry(DocumentSnapshot doc) {
+        try {
+            String id = doc.getString("id");
+            String courseName = doc.getString("courseName");
+            String roomId = doc.getString("roomId");
+            String roomName = doc.getString("roomName");
+            String dayOfWeekStr = doc.getString("dayOfWeek");
+            String startTimeStr = doc.getString("startTime");
+            String endTimeStr = doc.getString("endTime");
+            Long attendeesLong = doc.getLong("attendees");
+            int attendees = attendeesLong != null ? attendeesLong.intValue() : 0;
+            String professor = doc.getString("professor");
+            String note = doc.getString("note");
+
+            DayOfWeek dayOfWeek = DayOfWeek.valueOf(dayOfWeekStr);
+            LocalTime startTime = LocalTime.parse(startTimeStr);
+            LocalTime endTime = LocalTime.parse(endTimeStr);
+
+            return new TimetableEntry(id, courseName, roomId, roomName, dayOfWeek, startTime, endTime, attendees, professor, note);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+    private Map<String, Object> timetableEntryToMap(TimetableEntry entry) {
+        Map<String, Object> data = new HashMap<>();
+        data.put("id", entry.getId());
+        data.put("courseName", entry.getCourseName());
+        data.put("roomId", entry.getRoomId());
+        data.put("roomName", entry.getRoomName());
+        data.put("dayOfWeek", entry.getDayOfWeek().name());
+        data.put("startTime", entry.getStartTime().toString());
+        data.put("endTime", entry.getEndTime().toString());
+        data.put("attendees", entry.getAttendees());
+        data.put("professor", entry.getProfessor() != null ? entry.getProfessor() : "");
+        data.put("note", entry.getNote() != null ? entry.getNote() : "");
         data.put("createdAt", Timestamp.now());
         data.put("updatedAt", Timestamp.now());
         return data;

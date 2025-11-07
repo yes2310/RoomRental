@@ -6,6 +6,7 @@ import androidx.lifecycle.MutableLiveData;
 import com.example.bangbillija.model.Reservation;
 import com.example.bangbillija.model.ReservationStatus;
 import com.example.bangbillija.model.TimeSlot;
+import com.example.bangbillija.model.TimetableEntry;
 import com.example.bangbillija.service.AuthManager;
 import com.example.bangbillija.service.FirestoreManager;
 import com.example.bangbillija.service.SlotEngine;
@@ -22,6 +23,7 @@ public class ReservationRepository {
     private static ReservationRepository instance;
     private final FirestoreManager firestoreManager = FirestoreManager.getInstance();
     private final AuthManager authManager = AuthManager.getInstance();
+    private final TimetableRepository timetableRepository = TimetableRepository.getInstance();
 
     private final MutableLiveData<List<Reservation>> upcomingReservations = new MutableLiveData<>();
     private final MutableLiveData<List<Reservation>> pastReservations = new MutableLiveData<>();
@@ -54,11 +56,25 @@ public class ReservationRepository {
                     .collect(Collectors.toList());
             callback.onSuccess(SlotEngine.calculateDailySlots(date, reservations));
         } else {
-            // Firestore mode
+            // Firestore mode: 예약 + 시간표 모두 가져오기
             firestoreManager.getReservationsForRoom(roomId, date, new FirestoreManager.FirestoreCallback<List<Reservation>>() {
                 @Override
                 public void onSuccess(List<Reservation> reservations) {
-                    callback.onSuccess(SlotEngine.calculateDailySlots(date, reservations));
+                    // 시간표도 함께 가져오기
+                    firestoreManager.getTimetableEntriesForRoom(roomId, new FirestoreManager.FirestoreCallback<List<TimetableEntry>>() {
+                        @Override
+                        public void onSuccess(List<TimetableEntry> timetableEntries) {
+                            // 예약 + 시간표를 고려하여 슬롯 계산
+                            callback.onSuccess(SlotEngine.calculateDailySlots(date, reservations, timetableEntries));
+                        }
+
+                        @Override
+                        public void onFailure(Exception e) {
+                            // 시간표 로드 실패 시 예약만으로 계산
+                            error.setValue("시간표 로드 실패: " + e.getMessage());
+                            callback.onSuccess(SlotEngine.calculateDailySlots(date, reservations));
+                        }
+                    });
                 }
 
                 @Override

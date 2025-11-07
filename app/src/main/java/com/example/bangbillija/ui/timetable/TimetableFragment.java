@@ -23,6 +23,8 @@ import com.example.bangbillija.R;
 import com.example.bangbillija.model.Room;
 import com.example.bangbillija.model.TimetableEntry;
 import com.example.bangbillija.data.RoomRepository;
+import com.example.bangbillija.data.TimetableRepository;
+import com.example.bangbillija.service.FirestoreManager;
 import com.example.bangbillija.util.TimetableCSVParser;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.textfield.TextInputEditText;
@@ -53,6 +55,7 @@ public class TimetableFragment extends Fragment {
 
     private TimetableAdapter adapter;
     private RoomRepository roomRepository;
+    private TimetableRepository timetableRepository;
     private List<Room> availableRooms = new ArrayList<>();
     private Room selectedRoom;
     private DayOfWeek selectedDay;
@@ -82,11 +85,13 @@ public class TimetableFragment extends Fragment {
         super.onViewCreated(view, savedInstanceState);
 
         roomRepository = RoomRepository.getInstance();
+        timetableRepository = TimetableRepository.getInstance();
 
         initViews(view);
         setupRecyclerView();
         setupListeners();
         loadRooms();
+        loadTimetable();
         updateEmptyState();
     }
 
@@ -132,6 +137,15 @@ public class TimetableFragment extends Fragment {
         });
     }
 
+    private void loadTimetable() {
+        timetableRepository.getTimetableEntries().observe(getViewLifecycleOwner(), entries -> {
+            if (entries != null) {
+                adapter.setEntries(entries);
+                updateEmptyState();
+            }
+        });
+    }
+
     private void downloadTemplate() {
         try {
             InputStream inputStream = requireContext().getAssets().open("timetable_template.csv");
@@ -170,12 +184,22 @@ public class TimetableFragment extends Fragment {
             InputStream inputStream = requireContext().getContentResolver().openInputStream(uri);
             List<TimetableEntry> entries = TimetableCSVParser.parseCSV(inputStream);
 
-            adapter.setEntries(entries);
-            updateEmptyState();
+            // Firestore에 저장
+            timetableRepository.addEntries(entries, new FirestoreManager.FirestoreCallback<Void>() {
+                @Override
+                public void onSuccess(Void result) {
+                    Toast.makeText(requireContext(),
+                            entries.size() + "개의 수업이 저장되었습니다",
+                            Toast.LENGTH_SHORT).show();
+                }
 
-            Toast.makeText(requireContext(),
-                    entries.size() + "개의 수업을 가져왔습니다",
-                    Toast.LENGTH_SHORT).show();
+                @Override
+                public void onFailure(Exception e) {
+                    Toast.makeText(requireContext(),
+                            "저장 실패: " + e.getMessage(),
+                            Toast.LENGTH_LONG).show();
+                }
+            });
 
         } catch (TimetableCSVParser.ParseException e) {
             Toast.makeText(requireContext(),
@@ -300,11 +324,19 @@ public class TimetableFragment extends Fragment {
                 note
         );
 
-        adapter.addEntry(entry);
-        updateEmptyState();
-        clearInputs();
+        // Firestore에 저장
+        timetableRepository.addEntry(entry, new FirestoreManager.FirestoreCallback<Void>() {
+            @Override
+            public void onSuccess(Void result) {
+                clearInputs();
+                Toast.makeText(requireContext(), "수업이 추가되었습니다", Toast.LENGTH_SHORT).show();
+            }
 
-        Toast.makeText(requireContext(), "수업이 추가되었습니다", Toast.LENGTH_SHORT).show();
+            @Override
+            public void onFailure(Exception e) {
+                Toast.makeText(requireContext(), "추가 실패: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+            }
+        });
     }
 
     private void handleDeleteEntry(TimetableEntry entry) {
@@ -312,9 +344,18 @@ public class TimetableFragment extends Fragment {
                 .setTitle("수업 삭제")
                 .setMessage(entry.getCourseName() + " 수업을 삭제하시겠습니까?")
                 .setPositiveButton("삭제", (dialog, which) -> {
-                    adapter.removeEntry(entry);
-                    updateEmptyState();
-                    Toast.makeText(requireContext(), "삭제되었습니다", Toast.LENGTH_SHORT).show();
+                    // Firestore에서 삭제
+                    timetableRepository.deleteEntry(entry.getId(), new FirestoreManager.FirestoreCallback<Void>() {
+                        @Override
+                        public void onSuccess(Void result) {
+                            Toast.makeText(requireContext(), "삭제되었습니다", Toast.LENGTH_SHORT).show();
+                        }
+
+                        @Override
+                        public void onFailure(Exception e) {
+                            Toast.makeText(requireContext(), "삭제 실패: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                        }
+                    });
                 })
                 .setNegativeButton("취소", null)
                 .show();
