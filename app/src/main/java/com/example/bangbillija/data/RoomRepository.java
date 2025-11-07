@@ -14,7 +14,7 @@ public class RoomRepository {
     private final FirestoreManager firestoreManager = FirestoreManager.getInstance();
     private final MutableLiveData<List<Room>> rooms = new MutableLiveData<>();
     private final MutableLiveData<String> error = new MutableLiveData<>();
-    private boolean useFakeData = true; // 개발 중 전환 가능
+    private boolean useFakeData = false; // Firebase Firestore 사용
 
     private RoomRepository() {
         loadRooms();

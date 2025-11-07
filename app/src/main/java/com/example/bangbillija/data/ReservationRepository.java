@@ -27,7 +27,7 @@ public class ReservationRepository {
     private final MutableLiveData<List<Reservation>> pastReservations = new MutableLiveData<>();
     private final MutableLiveData<List<Reservation>> cancelledReservations = new MutableLiveData<>();
     private final MutableLiveData<String> error = new MutableLiveData<>();
-    private boolean useFakeData = true; // 개발 중 전환 가능
+    private boolean useFakeData = false; // Firebase Firestore 사용
 
     private ReservationRepository() {
         loadReservations();
