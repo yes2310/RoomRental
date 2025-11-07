@@ -22,6 +22,7 @@ import com.example.bangbillija.ui.reservations.ReservationDetailFragment;
 import com.example.bangbillija.ui.rooms.AddRoomFragment;
 import com.example.bangbillija.ui.rooms.RoomListFragment;
 import com.example.bangbillija.ui.auth.LoginActivity;
+import com.example.bangbillija.ui.timetable.TimetableFragment;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 
 import android.widget.TextView;
@@ -34,6 +35,7 @@ public class MainActivity extends AppCompatActivity implements Navigator {
     private AuthManager authManager;
 
     private final Fragment roomsFragment = new RoomListFragment();
+    private final Fragment timetableFragment = new TimetableFragment();
     private final Fragment calendarFragment = new CalendarFragment();
     private final Fragment qrFragment = new QrCheckInFragment();
     private final Fragment myReservationsFragment = new MyReservationsFragment();
@@ -69,6 +71,9 @@ public class MainActivity extends AppCompatActivity implements Navigator {
             if (itemId == R.id.menu_rooms) {
                 switchTo(roomsFragment, getString(R.string.title_rooms), false);
                 return true;
+            } else if (itemId == R.id.menu_timetable) {
+                switchTo(timetableFragment, getString(R.string.title_timetable), false);
+                return true;
             } else if (itemId == R.id.menu_calendar) {
                 switchTo(calendarFragment, getString(R.string.title_calendar), false);
                 return true;
@@ -77,9 +82,6 @@ public class MainActivity extends AppCompatActivity implements Navigator {
                 return true;
             } else if (itemId == R.id.menu_my) {
                 switchTo(myReservationsFragment, getString(R.string.title_my_reservations), false);
-                return true;
-            } else if (itemId == R.id.menu_profile) {
-                switchTo(profileFragment, getString(R.string.menu_profile), false);
                 return true;
             }
             return false;
@@ -181,6 +183,9 @@ public class MainActivity extends AppCompatActivity implements Navigator {
         } else if (fragment instanceof CreateReservationFragment) {
             // CreateReservationFragment - 이미 타이틀이 설정되어 있고, bottom nav는 변경하지 않음
             android.util.Log.d("MainActivity", "CreateReservationFragment detected, skipping bottom nav update");
+        } else if (fragment instanceof TimetableFragment) {
+            viewModel.updateToolbarTitle(getString(R.string.title_timetable));
+            bottomNavigationView.setSelectedItemId(R.id.menu_timetable);
         } else if (fragment instanceof CalendarFragment) {
             viewModel.updateToolbarTitle(getString(R.string.title_calendar));
             bottomNavigationView.setSelectedItemId(R.id.menu_calendar);
@@ -190,9 +195,6 @@ public class MainActivity extends AppCompatActivity implements Navigator {
         } else if (fragment instanceof MyReservationsFragment) {
             viewModel.updateToolbarTitle(getString(R.string.title_my_reservations));
             bottomNavigationView.setSelectedItemId(R.id.menu_my);
-        } else if (fragment instanceof ProfileFragment) {
-            viewModel.updateToolbarTitle(getString(R.string.menu_profile));
-            bottomNavigationView.setSelectedItemId(R.id.menu_profile);
         } else {
             viewModel.updateToolbarTitle(getString(R.string.title_rooms));
             bottomNavigationView.setSelectedItemId(R.id.menu_rooms);
