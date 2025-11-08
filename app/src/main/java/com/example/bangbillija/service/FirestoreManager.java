@@ -116,6 +116,25 @@ public class FirestoreManager {
                 .addOnFailureListener(callback::onFailure);
     }
 
+    public void deleteReservation(String reservationId, FirestoreCallback<Void> callback) {
+        db.collection(COLLECTION_RESERVATIONS)
+                .whereEqualTo("id", reservationId)
+                .get()
+                .addOnSuccessListener(querySnapshot -> {
+                    if (querySnapshot.isEmpty()) {
+                        callback.onFailure(new Exception("예약을 찾을 수 없습니다"));
+                        return;
+                    }
+                    String documentId = querySnapshot.getDocuments().get(0).getId();
+                    db.collection(COLLECTION_RESERVATIONS)
+                            .document(documentId)
+                            .delete()
+                            .addOnSuccessListener(aVoid -> callback.onSuccess(null))
+                            .addOnFailureListener(callback::onFailure);
+                })
+                .addOnFailureListener(callback::onFailure);
+    }
+
     public void updateReservationByReservationId(String reservationId, Map<String, Object> updates, FirestoreCallback<Void> callback) {
         db.collection(COLLECTION_RESERVATIONS)
                 .whereEqualTo("id", reservationId)
