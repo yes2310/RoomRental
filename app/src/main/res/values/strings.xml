@@ -44,4 +44,11 @@
     <string name="profile_display_name">이름</string>
     <string name="profile_logout">로그아웃</string>
     <string name="profile_last_login">마지막 로그인</string>
+    <string name="menu_timetable">시간표</string>
+    <string name="title_timetable">시간표 관리</string>
+    <string name="timetable_upload_csv">CSV 업로드</string>
+    <string name="timetable_download_template">템플릿 다운로드</string>
+    <string name="timetable_add_course">수업 추가</string>
+    <string name="timetable_parse_success">시간표를 성공적으로 가져왔습니다</string>
+    <string name="timetable_parse_error">CSV 파일 형식이 올바르지 않습니다</string>
 </resources>
