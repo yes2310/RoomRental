@@ -1,5 +1,6 @@
 package com.example.bangbillija.ui.calendar;
 
+import android.graphics.Color;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -8,29 +9,38 @@ import android.view.ViewGroup;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
-import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
 
-import com.example.bangbillija.core.SharedReservationViewModel;
+import com.example.bangbillija.R;
+import com.example.bangbillija.data.ReservationRepository;
 import com.example.bangbillija.databinding.FragmentCalendarBinding;
 import com.example.bangbillija.model.Reservation;
-import com.example.bangbillija.model.Room;
+import com.example.bangbillija.service.AuthManager;
+import com.example.bangbillija.service.FirestoreManager;
 import com.example.bangbillija.ui.Navigator;
+import com.example.bangbillija.ui.reservations.ReservationAdapter;
+import com.prolificinteractive.materialcalendarview.CalendarDay;
+import com.prolificinteractive.materialcalendarview.DayViewDecorator;
+import com.prolificinteractive.materialcalendarview.DayViewFacade;
+import com.prolificinteractive.materialcalendarview.MaterialCalendarView;
+import com.prolificinteractive.materialcalendarview.spans.DotSpan;
 
-import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
-public class CalendarFragment extends Fragment implements WeekDayAdapter.DayClickListener, TimeSlotAdapter.SlotClickListener {
+public class CalendarFragment extends Fragment {
 
     private FragmentCalendarBinding binding;
-    private SharedReservationViewModel viewModel;
-    private WeekDayAdapter weekDayAdapter;
-    private TimeSlotAdapter timeSlotAdapter;
-    private LocalDate currentWeekStart;
-    private final DateTimeFormatter monthFormatter = DateTimeFormatter.ofPattern("yyyy년 M월");
+    private ReservationRepository reservationRepository;
+    private AuthManager authManager;
+    private ReservationAdapter reservationAdapter;
+    private List<Reservation> allReservations = new ArrayList<>();
+    private LocalDate selectedDate = null;
+    private final DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("yyyy년 M월 d일 (E)");
 
     @Nullable
     @Override
@@ -43,68 +53,104 @@ public class CalendarFragment extends Fragment implements WeekDayAdapter.DayClic
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
-        viewModel = new ViewModelProvider(requireActivity()).get(SharedReservationViewModel.class);
 
-        weekDayAdapter = new WeekDayAdapter(this);
-        binding.recyclerWeek.setLayoutManager(new LinearLayoutManager(requireContext(), LinearLayoutManager.HORIZONTAL, false));
-        binding.recyclerWeek.setAdapter(weekDayAdapter);
+        reservationRepository = ReservationRepository.getInstance();
+        authManager = AuthManager.getInstance();
 
-        timeSlotAdapter = new TimeSlotAdapter(this);
-        binding.recyclerTimeSlots.setLayoutManager(new LinearLayoutManager(requireContext()));
-        binding.recyclerTimeSlots.setAdapter(timeSlotAdapter);
-
-        binding.buttonPrevWeek.setOnClickListener(v -> shiftWeek(-1));
-        binding.buttonNextWeek.setOnClickListener(v -> shiftWeek(1));
-        binding.buttonToday.setOnClickListener(v -> viewModel.selectDate(LocalDate.now()));
-
-        viewModel.getRooms().observe(getViewLifecycleOwner(), rooms -> ensureRoomSelection(rooms));
-        viewModel.getSelectedDate().observe(getViewLifecycleOwner(), this::updateWeek);
-        viewModel.getTimeSlots().observe(getViewLifecycleOwner(), timeSlotAdapter::submitList);
+        setupRecyclerView();
+        setupCalendar();
+        loadReservations();
     }
 
-    private void ensureRoomSelection(List<Room> rooms) {
-        if (rooms == null || rooms.isEmpty()) {
+    private void setupRecyclerView() {
+        reservationAdapter = new ReservationAdapter();
+        reservationAdapter.setOnReservationClickListener(reservation -> {
+            if (getActivity() instanceof Navigator) {
+                ((Navigator) getActivity()).openReservationDetail();
+            }
+        });
+
+        binding.recyclerReservations.setLayoutManager(new LinearLayoutManager(requireContext()));
+        binding.recyclerReservations.setAdapter(reservationAdapter);
+        binding.recyclerReservations.setVisibility(View.GONE);
+    }
+
+    private void setupCalendar() {
+        binding.calendarView.setSelectedDate(CalendarDay.today());
+
+        binding.calendarView.setOnDateChangedListener((widget, date, selected) -> {
+            selectedDate = LocalDate.of(date.getYear(), date.getMonth(), date.getDay());
+            updateSelectedDateInfo();
+            showReservationsForDate(selectedDate);
+        });
+    }
+
+    private void loadReservations() {
+        if (authManager.currentUser() == null) {
             return;
         }
-        Room selected = viewModel.getSelectedRoom().getValue();
-        if (selected == null) {
-            viewModel.selectRoom(rooms.get(0));
+
+        String userId = authManager.currentUser().getUid();
+        FirestoreManager firestoreManager = FirestoreManager.getInstance();
+
+        firestoreManager.getReservationsByUser(userId, new FirestoreManager.FirestoreCallback<List<Reservation>>() {
+            @Override
+            public void onSuccess(List<Reservation> reservations) {
+                allReservations = reservations;
+                updateCalendarDots();
+            }
+
+            @Override
+            public void onFailure(Exception e) {
+                // Handle error silently
+            }
+        });
+    }
+
+    private void updateCalendarDots() {
+        // 예약이 있는 날짜들을 수집
+        Set<CalendarDay> datesWithReservations = new HashSet<>();
+
+        for (Reservation reservation : allReservations) {
+            LocalDate date = reservation.getDate();
+            datesWithReservations.add(CalendarDay.from(
+                    date.getYear(),
+                    date.getMonthValue(),
+                    date.getDayOfMonth()
+            ));
+        }
+
+        // 점 데코레이터 추가
+        binding.calendarView.removeDecorators();
+        binding.calendarView.addDecorator(new DotDecorator(Color.parseColor("#FF6200EE"), datesWithReservations));
+    }
+
+    private void updateSelectedDateInfo() {
+        if (selectedDate != null) {
+            binding.textSelectedDate.setText(selectedDate.format(dateFormatter));
         }
     }
 
-    private void updateWeek(LocalDate selectedDate) {
-        if (selectedDate == null) {
-            selectedDate = LocalDate.now();
+    private void showReservationsForDate(LocalDate date) {
+        List<Reservation> dayReservations = new ArrayList<>();
+
+        for (Reservation reservation : allReservations) {
+            if (reservation.getDate().equals(date)) {
+                dayReservations.add(reservation);
+            }
         }
-        currentWeekStart = selectedDate.with(DayOfWeek.MONDAY);
-        binding.textMonth.setText(selectedDate.format(monthFormatter));
 
-        List<LocalDate> week = new ArrayList<>();
-        for (int i = 0; i < 7; i++) {
-            week.add(currentWeekStart.plusDays(i));
-        }
-        weekDayAdapter.submitList(week);
-        weekDayAdapter.setSelectedDate(selectedDate);
-    }
-
-    private void shiftWeek(int offset) {
-        LocalDate selected = viewModel.getSelectedDate().getValue();
-        if (selected == null) {
-            selected = LocalDate.now();
-        }
-        viewModel.selectDate(selected.plusWeeks(offset));
-    }
-
-    @Override
-    public void onDayClicked(LocalDate date) {
-        viewModel.selectDate(date);
-    }
-
-    @Override
-    public void onReservationSelected(Reservation reservation) {
-        viewModel.focusReservation(reservation);
-        if (getActivity() instanceof Navigator) {
-            ((Navigator) getActivity()).openReservationDetail();
+        if (dayReservations.isEmpty()) {
+            binding.recyclerReservations.setVisibility(View.GONE);
+            binding.textEmpty.setVisibility(View.VISIBLE);
+            binding.textEmpty.setText("선택한 날짜에 예약이 없습니다");
+            binding.textReservationCount.setVisibility(View.GONE);
+        } else {
+            binding.recyclerReservations.setVisibility(View.VISIBLE);
+            binding.textEmpty.setVisibility(View.GONE);
+            binding.textReservationCount.setVisibility(View.VISIBLE);
+            binding.textReservationCount.setText(dayReservations.size() + "개 예약");
+            reservationAdapter.submitList(dayReservations);
         }
     }
 
@@ -112,5 +158,26 @@ public class CalendarFragment extends Fragment implements WeekDayAdapter.DayClic
     public void onDestroyView() {
         super.onDestroyView();
         binding = null;
+    }
+
+    // 점 데코레이터 클래스
+    private static class DotDecorator implements DayViewDecorator {
+        private final int color;
+        private final Set<CalendarDay> dates;
+
+        DotDecorator(int color, Set<CalendarDay> dates) {
+            this.color = color;
+            this.dates = dates;
+        }
+
+        @Override
+        public boolean shouldDecorate(CalendarDay day) {
+            return dates.contains(day);
+        }
+
+        @Override
+        public void decorate(DayViewFacade view) {
+            view.addSpan(new DotSpan(5, color));
+        }
     }
 }

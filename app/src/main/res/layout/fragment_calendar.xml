@@ -1,79 +1,73 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:paddingBottom="16dp"
-    tools:context=".ui.calendar.CalendarFragment">
+    android:background="?attr/colorSurface">
 
-    <com.google.android.material.card.MaterialCardView
+    <com.prolificinteractive.materialcalendarview.MaterialCalendarView
+        android:id="@+id/calendarView"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginBottom="16dp"
-        android:clickable="false"
-        android:focusable="false"
-        app:cardCornerRadius="16dp"
-        app:cardElevation="2dp">
+        app:mcv_selectionColor="?attr/colorPrimary"
+        app:mcv_showOtherDates="all"
+        app:mcv_weekDayTextAppearance="@style/TextAppearance.Material3.BodySmall"
+        app:mcv_dateTextAppearance="@style/TextAppearance.Material3.BodyMedium"
+        app:mcv_headerTextAppearance="@style/TextAppearance.Material3.TitleLarge"
+        android:padding="16dp"/>
 
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:gravity="center_vertical"
-            android:orientation="horizontal"
-            android:padding="16dp">
-
-            <Button
-                android:id="@+id/buttonPrevWeek"
-                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/calendar_prev_week" />
-
-            <TextView
-                android:id="@+id/textMonth"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="16dp"
-                android:layout_marginEnd="16dp"
-                android:layout_weight="1"
-                android:gravity="center"
-                android:text="2025년 9월"
-                android:textColor="@color/on_surface"
-                android:textSize="18sp"
-                android:textStyle="bold" />
-
-            <Button
-                android:id="@+id/buttonNextWeek"
-                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/calendar_next_week" />
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/buttonToday"
-                style="@style/Widget.MaterialComponents.Button.TextButton"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="12dp"
-                android:text="@string/calendar_today" />
-        </LinearLayout>
-    </com.google.android.material.card.MaterialCardView>
-
-    <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/recyclerWeek"
+    <View
         android:layout_width="match_parent"
-        android:layout_height="80dp"
-        android:layout_marginBottom="16dp"
+        android:layout_height="1dp"
+        android:background="?attr/colorOutlineVariant"
+        android:layout_marginTop="8dp"/>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
         android:orientation="horizontal"
-        app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
-        tools:listitem="@layout/item_week_day" />
+        android:padding="16dp"
+        android:gravity="center_vertical">
+
+        <TextView
+            android:id="@+id/textSelectedDate"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="날짜를 선택하세요"
+            android:textAppearance="?attr/textAppearanceTitleMedium"
+            android:textColor="?attr/colorOnSurface"/>
+
+        <TextView
+            android:id="@+id/textReservationCount"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text=""
+            android:textAppearance="?attr/textAppearanceBodySmall"
+            android:textColor="?attr/colorPrimary"
+            android:background="@android:drawable/dialog_holo_light_frame"
+            android:paddingHorizontal="12dp"
+            android:paddingVertical="4dp"
+            android:visibility="gone"/>
+    </LinearLayout>
 
     <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/recyclerTimeSlots"
+        android:id="@+id/recyclerReservations"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
-        tools:listitem="@layout/item_time_slot" />
+        android:padding="16dp"
+        android:clipToPadding="false"/>
+
+    <TextView
+        android:id="@+id/textEmpty"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:gravity="center"
+        android:text="날짜를 선택하면 예약 목록이 표시됩니다"
+        android:textAppearance="?attr/textAppearanceBodyMedium"
+        android:textColor="?attr/colorOnSurfaceVariant"/>
+
 </LinearLayout>

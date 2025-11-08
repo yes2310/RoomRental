@@ -13,6 +13,7 @@ import androidx.lifecycle.ViewModelProvider;
 import com.example.bangbillija.R;
 import com.example.bangbillija.core.SharedReservationViewModel;
 import com.example.bangbillija.service.AuthManager;
+import com.example.bangbillija.ui.calendar.CalendarFragment;
 import com.example.bangbillija.ui.checkin.QrCheckInFragment;
 import com.example.bangbillija.ui.reservations.CreateReservationFragment;
 import com.example.bangbillija.ui.reservations.MyReservationsFragment;
@@ -34,6 +35,7 @@ public class MainActivity extends AppCompatActivity implements Navigator {
     private AuthManager authManager;
 
     private final Fragment roomsFragment = new RoomListFragment();
+    private final Fragment calendarFragment = new CalendarFragment();
     private final Fragment timetableFragment = new TimetableFragment();
     private final Fragment qrFragment = new QrCheckInFragment();
     private final Fragment myReservationsFragment = new MyReservationsFragment();
@@ -73,6 +75,9 @@ public class MainActivity extends AppCompatActivity implements Navigator {
             int itemId = item.getItemId();
             if (itemId == R.id.menu_rooms) {
                 switchTo(roomsFragment, getString(R.string.title_rooms), false);
+                return true;
+            } else if (itemId == R.id.menu_calendar) {
+                switchTo(calendarFragment, getString(R.string.menu_calendar), false);
                 return true;
             } else if (itemId == R.id.menu_timetable) {
                 switchTo(timetableFragment, getString(R.string.title_timetable), false);

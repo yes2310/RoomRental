@@ -5,6 +5,10 @@
         android:icon="@android:drawable/ic_menu_myplaces"
         android:title="@string/menu_rooms" />
     <item
+        android:id="@+id/menu_calendar"
+        android:icon="@android:drawable/ic_menu_my_calendar"
+        android:title="@string/menu_calendar" />
+    <item
         android:id="@+id/menu_timetable"
         android:icon="@android:drawable/ic_menu_recent_history"
         android:title="@string/menu_timetable" />
