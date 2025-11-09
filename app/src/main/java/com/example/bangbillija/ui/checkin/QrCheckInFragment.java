@@ -130,15 +130,30 @@ public class QrCheckInFragment extends Fragment {
                     Reservation matchingReservation = null;
 
                     for (Reservation reservation : reservations) {
-                        // 조건: 오늘, 해당 강의실, 현재 시간이 예약 시간 범위 내, PENDING 또는 RESERVED 상태
+                        // 조건: 오늘, 해당 강의실, RESERVED 상태 (확정된 예약만)
                         if (reservation.getDate().equals(today)
                                 && reservation.getRoomId().equals(roomId)
-                                && (reservation.getStatus() == ReservationStatus.PENDING
-                                    || reservation.getStatus() == ReservationStatus.RESERVED)
+                                && reservation.getStatus() == ReservationStatus.RESERVED
                                 && !now.isBefore(reservation.getStartTime().minusMinutes(10))
                                 && !now.isAfter(reservation.getEndTime())) {
                             matchingReservation = reservation;
                             break;
+                        }
+                    }
+
+                    // PENDING 상태의 예약 확인 (관리자 승인 대기)
+                    if (matchingReservation == null) {
+                        for (Reservation reservation : reservations) {
+                            if (reservation.getDate().equals(today)
+                                    && reservation.getRoomId().equals(roomId)
+                                    && reservation.getStatus() == ReservationStatus.PENDING
+                                    && !now.isBefore(reservation.getStartTime().minusMinutes(10))
+                                    && !now.isAfter(reservation.getEndTime())) {
+                                Snackbar.make(binding.getRoot(),
+                                        "이 예약은 아직 관리자 승인 대기 중입니다\n승인 후에 체크인할 수 있습니다",
+                                        Snackbar.LENGTH_LONG).show();
+                                return;
+                            }
                         }
                     }
 

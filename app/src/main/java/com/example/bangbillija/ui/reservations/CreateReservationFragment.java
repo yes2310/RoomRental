@@ -218,6 +218,10 @@ public class CreateReservationFragment extends Fragment {
         String reservationId = generateReservationId();
         String ownerName = user.getDisplayName() != null ? user.getDisplayName() : user.getEmail();
 
+        // 강의 시간과 겹치는지 확인
+        boolean isClassTime = selectedTimeSlot.getTimetableEntry() != null;
+        ReservationStatus initialStatus = isClassTime ? ReservationStatus.PENDING : ReservationStatus.RESERVED;
+
         // Use selected time slot's start and end times
         Reservation reservation = new Reservation(
                 reservationId,
@@ -229,7 +233,7 @@ public class CreateReservationFragment extends Fragment {
                 selectedTimeSlot.getStart(),
                 selectedTimeSlot.getEnd(),
                 attendees,
-                ReservationStatus.PENDING,
+                initialStatus,
                 note
         );
 
@@ -244,7 +248,16 @@ public class CreateReservationFragment extends Fragment {
             @Override
             public void onSuccess(String documentId) {
                 setLoading(false);
-                Snackbar.make(binding.getRoot(), "예약이 생성되었습니다", Snackbar.LENGTH_SHORT).show();
+
+                // 상태에 따라 다른 메시지 표시
+                String message;
+                if (isClassTime) {
+                    message = "예약이 생성되었습니다\n강의 시간과 겹치므로 관리자 승인을 기다리는 중입니다";
+                } else {
+                    message = "예약이 확정되었습니다!\n10분 이내에 QR 체크인하지 않으면 자동 취소됩니다";
+                }
+
+                Snackbar.make(binding.getRoot(), message, Snackbar.LENGTH_LONG).show();
                 if (getActivity() != null) {
                     requireActivity().onBackPressed();
                 }
