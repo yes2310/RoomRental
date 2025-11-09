@@ -18,7 +18,7 @@ import com.example.bangbillija.model.Reservation;
 import com.example.bangbillija.service.AuthManager;
 import com.example.bangbillija.service.FirestoreManager;
 import com.example.bangbillija.ui.Navigator;
-import com.example.bangbillija.ui.reservations.ReservationAdapter;
+import com.example.bangbillija.ui.reservations.MyReservationsAdapter;
 import com.prolificinteractive.materialcalendarview.CalendarDay;
 import com.prolificinteractive.materialcalendarview.DayViewDecorator;
 import com.prolificinteractive.materialcalendarview.DayViewFacade;
@@ -37,7 +37,7 @@ public class CalendarFragment extends Fragment {
     private FragmentCalendarBinding binding;
     private ReservationRepository reservationRepository;
     private AuthManager authManager;
-    private ReservationAdapter reservationAdapter;
+    private MyReservationsAdapter reservationAdapter;
     private List<Reservation> allReservations = new ArrayList<>();
     private LocalDate selectedDate = null;
     private final DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("yyyy년 M월 d일 (E)");
@@ -63,7 +63,7 @@ public class CalendarFragment extends Fragment {
     }
 
     private void setupRecyclerView() {
-        reservationAdapter = new ReservationAdapter();
+        reservationAdapter = new MyReservationsAdapter();
         reservationAdapter.setOnReservationClickListener(reservation -> {
             if (getActivity() instanceof Navigator) {
                 ((Navigator) getActivity()).openReservationDetail();
