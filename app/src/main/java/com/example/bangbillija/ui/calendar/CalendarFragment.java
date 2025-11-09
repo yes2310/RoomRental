@@ -63,10 +63,17 @@ public class CalendarFragment extends Fragment {
     }
 
     private void setupRecyclerView() {
-        reservationAdapter = new MyReservationsAdapter();
-        reservationAdapter.setOnReservationClickListener(reservation -> {
-            if (getActivity() instanceof Navigator) {
-                ((Navigator) getActivity()).openReservationDetail();
+        reservationAdapter = new MyReservationsAdapter(new MyReservationsAdapter.ReservationClickListener() {
+            @Override
+            public void onPrimaryAction(Reservation reservation) {
+                if (getActivity() instanceof Navigator) {
+                    ((Navigator) getActivity()).openReservationDetail();
+                }
+            }
+
+            @Override
+            public void onSecondaryAction(Reservation reservation) {
+                // Handle secondary action if needed
             }
         });
 

@@ -17,9 +17,9 @@ import com.example.bangbillija.model.ReservationStatus;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 
-class MyReservationsAdapter extends ListAdapter<Reservation, MyReservationsAdapter.ViewHolder> {
+public class MyReservationsAdapter extends ListAdapter<Reservation, MyReservationsAdapter.ViewHolder> {
 
-    interface ReservationClickListener {
+    public interface ReservationClickListener {
         void onPrimaryAction(Reservation reservation);
 
         void onSecondaryAction(Reservation reservation);
@@ -28,7 +28,7 @@ class MyReservationsAdapter extends ListAdapter<Reservation, MyReservationsAdapt
     private final ReservationClickListener listener;
     private final DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("M월 d일 (E)");
 
-    MyReservationsAdapter(ReservationClickListener listener) {
+    public MyReservationsAdapter(ReservationClickListener listener) {
         super(DIFF_CALLBACK);
         this.listener = listener;
     }
