@@ -101,7 +101,17 @@ public class CalendarFragment extends Fragment {
 
             @Override
             public void onSecondaryAction(Reservation reservation) {
-                // Handle secondary action if needed
+                // Secondary action은 예약 상태에 따라 다른 동작 수행
+                if (reservation.getStatus() == com.example.bangbillija.model.ReservationStatus.RESERVED) {
+                    // RESERVED: 상세보기
+                    handleDetailView(reservation);
+                } else if (reservation.getStatus() == com.example.bangbillija.model.ReservationStatus.PENDING) {
+                    // PENDING: 취소
+                    showCancelConfirmDialog(reservation);
+                } else {
+                    // CANCELLED, CHECKED_IN 등: 삭제
+                    showDeleteConfirmDialog(reservation);
+                }
             }
         });
 
@@ -184,6 +194,102 @@ public class CalendarFragment extends Fragment {
         super.onResume();
         // 화면이 다시 보일 때 예약 목록 새로고침
         loadReservations();
+    }
+
+    private void handleDetailView(Reservation reservation) {
+        android.util.Log.d("CalendarFragment", "handleDetailView called for reservation: " + reservation.getId());
+        viewModel.focusReservation(reservation);
+
+        // 상세보기 화면을 위해 Room 정보도 설정
+        if (!allRooms.isEmpty()) {
+            Room matchingRoom = allRooms.stream()
+                    .filter(r -> r.getId().equals(reservation.getRoomId()))
+                    .findFirst()
+                    .orElse(null);
+
+            if (matchingRoom != null) {
+                viewModel.selectRoom(matchingRoom);
+            }
+        }
+
+        if (getActivity() instanceof Navigator) {
+            ((Navigator) getActivity()).openReservationDetail();
+        }
+    }
+
+    private void showCancelConfirmDialog(Reservation reservation) {
+        new androidx.appcompat.app.AlertDialog.Builder(requireContext())
+                .setTitle("예약 취소")
+                .setMessage("'" + reservation.getTitle() + "' 예약을 취소하시겠습니까?\n\n" +
+                        "날짜: " + reservation.getDate() + "\n" +
+                        "시간: " + reservation.getStartTime() + " - " + reservation.getEndTime())
+                .setPositiveButton("취소하기", (dialog, which) -> {
+                    com.example.bangbillija.data.ReservationRepository.getInstance()
+                            .cancelReservationByReservationId(reservation.getId(),
+                                    new FirestoreManager.FirestoreCallback<Void>() {
+                                        @Override
+                                        public void onSuccess(Void result) {
+                                            if (binding != null) {
+                                                com.google.android.material.snackbar.Snackbar.make(
+                                                        binding.getRoot(),
+                                                        "예약이 취소되었습니다",
+                                                        com.google.android.material.snackbar.Snackbar.LENGTH_SHORT
+                                                ).show();
+                                            }
+                                            loadReservations();
+                                        }
+
+                                        @Override
+                                        public void onFailure(Exception e) {
+                                            if (binding != null) {
+                                                com.google.android.material.snackbar.Snackbar.make(
+                                                        binding.getRoot(),
+                                                        "취소 실패: " + e.getMessage(),
+                                                        com.google.android.material.snackbar.Snackbar.LENGTH_LONG
+                                                ).show();
+                                            }
+                                        }
+                                    });
+                })
+                .setNegativeButton("돌아가기", null)
+                .show();
+    }
+
+    private void showDeleteConfirmDialog(Reservation reservation) {
+        new androidx.appcompat.app.AlertDialog.Builder(requireContext())
+                .setTitle("예약 삭제")
+                .setMessage("'" + reservation.getTitle() + "' 예약 기록을 완전히 삭제하시겠습니까?\n\n" +
+                        "이 작업은 되돌릴 수 없습니다.")
+                .setPositiveButton("삭제", (dialog, which) -> {
+                    FirestoreManager.getInstance()
+                            .deleteReservation(reservation.getId(),
+                                    new FirestoreManager.FirestoreCallback<Void>() {
+                                        @Override
+                                        public void onSuccess(Void result) {
+                                            if (binding != null) {
+                                                com.google.android.material.snackbar.Snackbar.make(
+                                                        binding.getRoot(),
+                                                        "예약이 삭제되었습니다",
+                                                        com.google.android.material.snackbar.Snackbar.LENGTH_SHORT
+                                                ).show();
+                                            }
+                                            loadReservations();
+                                        }
+
+                                        @Override
+                                        public void onFailure(Exception e) {
+                                            if (binding != null) {
+                                                com.google.android.material.snackbar.Snackbar.make(
+                                                        binding.getRoot(),
+                                                        "삭제 실패: " + e.getMessage(),
+                                                        com.google.android.material.snackbar.Snackbar.LENGTH_LONG
+                                                ).show();
+                                            }
+                                        }
+                                    });
+                })
+                .setNegativeButton("취소", null)
+                .show();
     }
 
     @Override
