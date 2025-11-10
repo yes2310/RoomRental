@@ -1,16 +1,17 @@
 package com.example.bangbillija.ui.reservations;
 
+import android.app.DatePickerDialog;
 import android.os.Bundle;
 import android.text.TextUtils;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.ArrayAdapter;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
+import androidx.recyclerview.widget.LinearLayoutManager;
 
 import com.example.bangbillija.R;
 import com.example.bangbillija.core.SharedReservationViewModel;
@@ -19,6 +20,7 @@ import com.example.bangbillija.databinding.FragmentCreateReservationBinding;
 import com.example.bangbillija.model.Reservation;
 import com.example.bangbillija.model.ReservationStatus;
 import com.example.bangbillija.model.Room;
+import com.example.bangbillija.model.TimeSlot;
 import com.example.bangbillija.service.AuthManager;
 import com.example.bangbillija.service.FirestoreManager;
 import com.example.bangbillija.ui.Navigator;
@@ -28,7 +30,6 @@ import com.google.firebase.auth.FirebaseUser;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -38,14 +39,13 @@ public class CreateReservationFragment extends Fragment {
     private SharedReservationViewModel viewModel;
     private ReservationRepository reservationRepository;
     private AuthManager authManager;
+    private TimeSlotSelectionAdapter slotAdapter;
 
     private Room selectedRoom;
     private LocalDate selectedDate;
-    private LocalTime startTime;
-    private LocalTime endTime;
+    private TimeSlot selectedTimeSlot;
 
     private final DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("yyyy년 M월 d일 (E)");
-    private final DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("HH:mm");
 
     @Nullable
     @Override
@@ -63,9 +63,10 @@ public class CreateReservationFragment extends Fragment {
         reservationRepository = ReservationRepository.getInstance();
         authManager = AuthManager.getInstance();
 
-        setupTimeDropdowns();
+        setupRecyclerView();
         observeViewModel();
 
+        binding.buttonSelectDate.setOnClickListener(v -> showDatePicker());
         binding.buttonCreate.setOnClickListener(v -> createReservation());
         binding.buttonCancel.setOnClickListener(v -> {
             if (getActivity() instanceof Navigator) {
@@ -74,37 +75,36 @@ public class CreateReservationFragment extends Fragment {
         });
     }
 
-    private void setupTimeDropdowns() {
-        List<String> timeSlots = generateTimeSlots();
-        ArrayAdapter<String> adapter = new ArrayAdapter<>(requireContext(),
-                android.R.layout.simple_dropdown_item_1line, timeSlots);
-
-        binding.inputStartTime.setAdapter(adapter);
-        binding.inputEndTime.setAdapter(adapter);
-
-        binding.inputStartTime.setOnItemClickListener((parent, v, position, id) -> {
-            String selected = (String) parent.getItemAtPosition(position);
-            startTime = LocalTime.parse(selected, timeFormatter);
-            validateTimes();
+    private void setupRecyclerView() {
+        slotAdapter = new TimeSlotSelectionAdapter();
+        slotAdapter.setOnSlotSelectedListener(slot -> {
+            selectedTimeSlot = slot;
+            binding.textSlotHint.setText("선택된 시간: " + slot.getDisplayTime());
         });
 
-        binding.inputEndTime.setOnItemClickListener((parent, v, position, id) -> {
-            String selected = (String) parent.getItemAtPosition(position);
-            endTime = LocalTime.parse(selected, timeFormatter);
-            validateTimes();
-        });
+        binding.recyclerTimeSlots.setLayoutManager(new LinearLayoutManager(requireContext()));
+        binding.recyclerTimeSlots.setAdapter(slotAdapter);
     }
 
-    private List<String> generateTimeSlots() {
-        List<String> slots = new ArrayList<>();
-        LocalTime current = LocalTime.of(9, 0);
-        LocalTime end = LocalTime.of(21, 0);
+    private void showDatePicker() {
+        LocalDate today = LocalDate.now();
+        LocalDate initialDate = selectedDate != null ? selectedDate : today;
 
-        while (!current.isAfter(end)) {
-            slots.add(current.format(timeFormatter));
-            current = current.plusMinutes(30);
-        }
-        return slots;
+        DatePickerDialog datePicker = new DatePickerDialog(
+                requireContext(),
+                (view, year, month, dayOfMonth) -> {
+                    selectedDate = LocalDate.of(year, month + 1, dayOfMonth);
+                    binding.textDateInfo.setText("날짜: " + selectedDate.format(dateFormatter));
+                    loadAvailableSlots();
+                },
+                initialDate.getYear(),
+                initialDate.getMonthValue() - 1,
+                initialDate.getDayOfMonth()
+        );
+
+        // Prevent selecting past dates
+        datePicker.getDatePicker().setMinDate(today.toEpochDay() * 24 * 60 * 60 * 1000);
+        datePicker.show();
     }
 
     private void observeViewModel() {
@@ -112,33 +112,48 @@ public class CreateReservationFragment extends Fragment {
             selectedRoom = room;
             if (room != null) {
                 binding.textRoomInfo.setText("강의실: " + room.getName());
+                loadAvailableSlots();
             }
         });
 
-        viewModel.getSelectedDate().observe(getViewLifecycleOwner(), date -> {
+        // Initialize date from ViewModel if already selected
+        LocalDate date = viewModel.getSelectedDate().getValue();
+        if (date != null) {
             selectedDate = date;
-            if (date != null) {
-                binding.textDateInfo.setText("날짜: " + date.format(dateFormatter));
-            }
-        });
+            binding.textDateInfo.setText("날짜: " + date.format(dateFormatter));
+        }
     }
 
-    private void validateTimes() {
-        if (startTime != null && endTime != null) {
-            if (!startTime.isBefore(endTime)) {
-                binding.inputEndTimeLayout.setError("종료 시간은 시작 시간 이후여야 합니다");
-            } else {
-                binding.inputEndTimeLayout.setError(null);
-            }
+    private void loadAvailableSlots() {
+        if (selectedRoom == null || selectedDate == null) {
+            binding.textSlotHint.setText("강의실과 날짜를 선택하면 예약 가능한 시간대가 표시됩니다");
+            slotAdapter.setSlots(null);
+            return;
         }
+
+        // Show loading
+        binding.textSlotHint.setText("시간대를 불러오는 중...");
+
+        // Fetch slots from repository
+        reservationRepository.buildSlotsFor(selectedRoom.getId(), selectedDate, new FirestoreManager.FirestoreCallback<List<TimeSlot>>() {
+            @Override
+            public void onSuccess(List<TimeSlot> slots) {
+                slotAdapter.setSlots(slots);
+                binding.textSlotHint.setText("예약 가능한 시간대를 선택하세요 (2시간 단위)");
+            }
+
+            @Override
+            public void onFailure(Exception e) {
+                binding.textSlotHint.setText("시간대 로드 실패: " + e.getMessage());
+                Snackbar.make(binding.getRoot(), "시간대를 불러올 수 없습니다", Snackbar.LENGTH_SHORT).show();
+            }
+        });
     }
 
     private void createReservation() {
         // Clear errors
         binding.inputTitleLayout.setError(null);
         binding.inputAttendeesLayout.setError(null);
-        binding.inputStartTimeLayout.setError(null);
-        binding.inputEndTimeLayout.setError(null);
 
         // Validate inputs
         String title = getTrimmed(binding.inputTitle.getText());
@@ -157,18 +172,8 @@ public class CreateReservationFragment extends Fragment {
             valid = false;
         }
 
-        if (startTime == null) {
-            binding.inputStartTimeLayout.setError("시작 시간을 선택하세요");
-            valid = false;
-        }
-
-        if (endTime == null) {
-            binding.inputEndTimeLayout.setError("종료 시간을 선택하세요");
-            valid = false;
-        }
-
-        if (startTime != null && endTime != null && !startTime.isBefore(endTime)) {
-            binding.inputEndTimeLayout.setError("종료 시간은 시작 시간 이후여야 합니다");
+        if (selectedTimeSlot == null) {
+            Snackbar.make(binding.getRoot(), "시간대를 선택하세요", Snackbar.LENGTH_SHORT).show();
             valid = false;
         }
 
@@ -213,6 +218,7 @@ public class CreateReservationFragment extends Fragment {
         String reservationId = generateReservationId();
         String ownerName = user.getDisplayName() != null ? user.getDisplayName() : user.getEmail();
 
+        // Use selected time slot's start and end times
         Reservation reservation = new Reservation(
                 reservationId,
                 selectedRoom.getId(),
@@ -220,8 +226,8 @@ public class CreateReservationFragment extends Fragment {
                 title,
                 ownerName,
                 selectedDate,
-                startTime,
-                endTime,
+                selectedTimeSlot.getStart(),
+                selectedTimeSlot.getEnd(),
                 attendees,
                 ReservationStatus.PENDING,
                 note
@@ -264,11 +270,11 @@ public class CreateReservationFragment extends Fragment {
         binding.progressBar.setVisibility(loading ? View.VISIBLE : View.GONE);
         binding.buttonCreate.setEnabled(!loading);
         binding.buttonCancel.setEnabled(!loading);
+        binding.buttonSelectDate.setEnabled(!loading);
         binding.inputTitle.setEnabled(!loading);
-        binding.inputStartTime.setEnabled(!loading);
-        binding.inputEndTime.setEnabled(!loading);
         binding.inputAttendees.setEnabled(!loading);
         binding.inputNote.setEnabled(!loading);
+        binding.recyclerTimeSlots.setEnabled(!loading);
     }
 
     private String getTrimmed(@Nullable CharSequence text) {

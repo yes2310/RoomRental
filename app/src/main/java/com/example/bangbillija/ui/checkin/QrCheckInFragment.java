@@ -20,8 +20,10 @@ import com.example.bangbillija.data.ReservationRepository;
 import com.example.bangbillija.databinding.FragmentQrCheckinBinding;
 import com.example.bangbillija.model.Reservation;
 import com.example.bangbillija.model.ReservationStatus;
+import com.example.bangbillija.service.AuthManager;
 import com.example.bangbillija.service.FirestoreManager;
 import com.google.android.material.snackbar.Snackbar;
+import com.google.firebase.auth.FirebaseUser;
 import com.journeyapps.barcodescanner.ScanContract;
 import com.journeyapps.barcodescanner.ScanIntentResult;
 import com.journeyapps.barcodescanner.ScanOptions;
@@ -32,12 +34,14 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
+import java.util.List;
 
 public class QrCheckInFragment extends Fragment {
 
     private FragmentQrCheckinBinding binding;
     private SharedReservationViewModel viewModel;
     private ReservationRepository reservationRepository;
+    private AuthManager authManager;
     private ActivityResultLauncher<String> permissionLauncher;
     private ActivityResultLauncher<ScanOptions> barcodeLauncher;
 
@@ -54,6 +58,7 @@ public class QrCheckInFragment extends Fragment {
         super.onViewCreated(view, savedInstanceState);
         viewModel = new ViewModelProvider(requireActivity()).get(SharedReservationViewModel.class);
         reservationRepository = ReservationRepository.getInstance();
+        authManager = AuthManager.getInstance();
 
         // QR 스캐너 런처 등록
         barcodeLauncher = registerForActivityResult(new ScanContract(), result -> {
@@ -98,53 +103,82 @@ public class QrCheckInFragment extends Fragment {
 
     private void processQRCode(String qrContent) {
         try {
-            // QR 코드 내용 파싱 (JSON 형식)
-            JSONObject json = new JSONObject(qrContent);
-            String reservationId = json.getString("reservationId");
-            String roomId = json.getString("roomId");
-            String dateStr = json.getString("date");
-            String startTimeStr = json.getString("startTime");
+            // Get current user
+            FirebaseUser user = authManager.currentUser();
+            if (user == null) {
+                Snackbar.make(binding.getRoot(), "로그인이 필요합니다", Snackbar.LENGTH_SHORT).show();
+                return;
+            }
 
-            // 현재 시간
+            // QR 코드 내용 파싱 (간단한 JSON 형식 - roomId만 포함)
+            JSONObject json = new JSONObject(qrContent);
+            String roomId = json.getString("roomId");
+            String roomName = json.optString("roomName", "강의실");
+
+            android.util.Log.d("QrCheckIn", "Scanned room: " + roomId + " (" + roomName + ")");
+
+            // 현재 시간과 날짜
             LocalTime now = LocalTime.now();
             LocalDate today = LocalDate.now();
 
-            // 예약 시간 파싱
-            LocalDate reservationDate = LocalDate.parse(dateStr, DateTimeFormatter.ISO_LOCAL_DATE);
-            LocalTime reservationStartTime = LocalTime.parse(startTimeStr, DateTimeFormatter.ofPattern("HH:mm"));
+            // 사용자의 예약 목록 조회
+            FirestoreManager firestoreManager = FirestoreManager.getInstance();
+            firestoreManager.getReservationsByUser(user.getUid(), new FirestoreManager.FirestoreCallback<List<Reservation>>() {
+                @Override
+                public void onSuccess(List<Reservation> reservations) {
+                    // 현재 시간에 해당 강의실 예약 찾기
+                    Reservation matchingReservation = null;
 
-            // 날짜 확인
-            if (!today.equals(reservationDate)) {
-                Snackbar.make(binding.getRoot(), "오늘 예약이 아닙니다", Snackbar.LENGTH_LONG).show();
-                return;
-            }
+                    for (Reservation reservation : reservations) {
+                        // 조건: 오늘, 해당 강의실, 현재 시간이 예약 시간 범위 내, PENDING 또는 RESERVED 상태
+                        if (reservation.getDate().equals(today)
+                                && reservation.getRoomId().equals(roomId)
+                                && (reservation.getStatus() == ReservationStatus.PENDING
+                                    || reservation.getStatus() == ReservationStatus.RESERVED)
+                                && !now.isBefore(reservation.getStartTime().minusMinutes(10))
+                                && !now.isAfter(reservation.getEndTime())) {
+                            matchingReservation = reservation;
+                            break;
+                        }
+                    }
 
-            // 체크인 가능 시간 확인 (예약 시간 10분 이내)
-            long minutesDiff = java.time.Duration.between(reservationStartTime, now).toMinutes();
+                    if (matchingReservation == null) {
+                        Snackbar.make(binding.getRoot(),
+                                roomName + "에 대한 활성 예약이 없습니다\n(현재 시간: " + now.format(DateTimeFormatter.ofPattern("HH:mm")) + ")",
+                                Snackbar.LENGTH_LONG).show();
+                        return;
+                    }
 
-            if (minutesDiff < -10) {
-                Snackbar.make(binding.getRoot(),
-                        "체크인은 예약 시간 10분 전부터 가능합니다\n(예약 시간: " + startTimeStr + ")",
-                        Snackbar.LENGTH_LONG).show();
-                return;
-            }
+                    // 체크인 가능 시간 확인 (예약 시작 10분 전부터 예약 종료 시간까지)
+                    LocalTime startTime = matchingReservation.getStartTime();
+                    long minutesBeforeStart = java.time.Duration.between(now, startTime).toMinutes();
 
-            if (minutesDiff > 10) {
-                // 10분 초과 - 예약 자동 취소
-                cancelReservationAutomatically(reservationId);
-                return;
-            }
+                    if (minutesBeforeStart > 10) {
+                        Snackbar.make(binding.getRoot(),
+                                "체크인은 예약 시간 10분 전부터 가능합니다\n(예약 시간: " + startTime.format(DateTimeFormatter.ofPattern("HH:mm")) + ")",
+                                Snackbar.LENGTH_LONG).show();
+                        return;
+                    }
 
-            // 체크인 처리
-            checkInReservation(reservationId);
+                    // 체크인 처리
+                    checkInReservation(matchingReservation.getId(), matchingReservation.getTitle(), roomName);
+                }
+
+                @Override
+                public void onFailure(Exception e) {
+                    android.util.Log.e("QrCheckIn", "예약 조회 실패", e);
+                    Snackbar.make(binding.getRoot(), "예약 정보를 가져올 수 없습니다: " + e.getMessage(),
+                            Snackbar.LENGTH_LONG).show();
+                }
+            });
 
         } catch (Exception e) {
             android.util.Log.e("QrCheckIn", "QR 코드 처리 실패", e);
-            Snackbar.make(binding.getRoot(), "유효하지 않은 QR 코드입니다", Snackbar.LENGTH_LONG).show();
+            Snackbar.make(binding.getRoot(), "유효하지 않은 QR 코드입니다\n형식: {\"roomId\":\"ROOM_ID\"}", Snackbar.LENGTH_LONG).show();
         }
     }
 
-    private void checkInReservation(String reservationId) {
+    private void checkInReservation(String reservationId, String reservationTitle, String roomName) {
         HashMap<String, Object> updates = new HashMap<>();
         updates.put("status", ReservationStatus.CHECKED_IN.name());
 
@@ -152,30 +186,14 @@ public class QrCheckInFragment extends Fragment {
                 new FirestoreManager.FirestoreCallback<Void>() {
                     @Override
                     public void onSuccess(Void result) {
-                        Snackbar.make(binding.getRoot(), "체크인이 완료되었습니다!", Snackbar.LENGTH_LONG).show();
+                        Snackbar.make(binding.getRoot(),
+                                "체크인 완료!\n" + roomName + " - " + reservationTitle,
+                                Snackbar.LENGTH_LONG).show();
                     }
 
                     @Override
                     public void onFailure(Exception e) {
                         Snackbar.make(binding.getRoot(), "체크인 실패: " + e.getMessage(),
-                                Snackbar.LENGTH_LONG).show();
-                    }
-                });
-    }
-
-    private void cancelReservationAutomatically(String reservationId) {
-        reservationRepository.cancelReservationByReservationId(reservationId,
-                new FirestoreManager.FirestoreCallback<Void>() {
-                    @Override
-                    public void onSuccess(Void result) {
-                        Snackbar.make(binding.getRoot(),
-                                "예약 시간으로부터 10분이 지나 자동으로 취소되었습니다",
-                                Snackbar.LENGTH_LONG).show();
-                    }
-
-                    @Override
-                    public void onFailure(Exception e) {
-                        Snackbar.make(binding.getRoot(), "예약 취소 실패: " + e.getMessage(),
                                 Snackbar.LENGTH_LONG).show();
                     }
                 });

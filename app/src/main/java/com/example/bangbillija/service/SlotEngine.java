@@ -16,6 +16,17 @@ public final class SlotEngine {
 
     private static final LocalTime DAY_START = LocalTime.of(9, 0);
     private static final LocalTime DAY_END = LocalTime.of(21, 0);
+    private static final int SLOT_DURATION_HOURS = 2;
+
+    // Fixed 2-hour time slots
+    private static final List<TimeSlotTemplate> FIXED_SLOTS = List.of(
+            new TimeSlotTemplate(LocalTime.of(9, 0), LocalTime.of(11, 0)),
+            new TimeSlotTemplate(LocalTime.of(11, 0), LocalTime.of(13, 0)),
+            new TimeSlotTemplate(LocalTime.of(13, 0), LocalTime.of(15, 0)),
+            new TimeSlotTemplate(LocalTime.of(15, 0), LocalTime.of(17, 0)),
+            new TimeSlotTemplate(LocalTime.of(17, 0), LocalTime.of(19, 0)),
+            new TimeSlotTemplate(LocalTime.of(19, 0), LocalTime.of(21, 0))
+    );
 
     private SlotEngine() {
     }
@@ -56,32 +67,42 @@ public final class SlotEngine {
             ));
         }
 
-        // 시작 시간 순으로 정렬
-        blockedTimes.sort(Comparator.comparing(TimeBlock::getStart));
+        // 고정된 2시간 슬롯에 대해 확인
+        for (TimeSlotTemplate template : FIXED_SLOTS) {
+            // 해당 슬롯과 겹치는 블록 찾기
+            TimeBlock overlappingBlock = findOverlappingBlock(template, blockedTimes);
 
-        // 빈 시간과 사용 중인 시간을 계산
-        LocalTime cursor = DAY_START;
-        for (TimeBlock block : blockedTimes) {
-            if (cursor.isBefore(block.getStart())) {
-                // 빈 시간 추가
-                slots.add(TimeSlot.available(date, cursor, block.getStart()));
+            if (overlappingBlock != null) {
+                // 겹치는 예약/수업이 있으면 해당 슬롯 추가
+                slots.add(overlappingBlock.getSlot());
+            } else {
+                // 비어있으면 예약 가능 슬롯 추가
+                slots.add(TimeSlot.available(date, template.start, template.end));
             }
-            // 사용 중인 시간 추가
-            slots.add(block.getSlot());
-            cursor = block.getEnd();
-        }
-
-        // 마지막 블록 이후 남은 시간
-        if (cursor.isBefore(DAY_END)) {
-            slots.add(TimeSlot.available(date, cursor, DAY_END));
-        }
-
-        // 비어있으면 전체 시간을 사용 가능으로 추가
-        if (slots.isEmpty()) {
-            slots.add(TimeSlot.available(date, DAY_START, DAY_END));
         }
 
         return slots;
+    }
+
+    private static TimeBlock findOverlappingBlock(TimeSlotTemplate template, List<TimeBlock> blockedTimes) {
+        for (TimeBlock block : blockedTimes) {
+            // 겹치는지 확인: 블록의 시작이 슬롯 끝 전이고, 블록의 끝이 슬롯 시작 후
+            if (block.getStart().isBefore(template.end) && block.getEnd().isAfter(template.start)) {
+                return block;
+            }
+        }
+        return null;
+    }
+
+    // 내부 헬퍼 클래스: 고정 시간 슬롯 템플릿
+    private static class TimeSlotTemplate {
+        private final LocalTime start;
+        private final LocalTime end;
+
+        TimeSlotTemplate(LocalTime start, LocalTime end) {
+            this.start = start;
+            this.end = end;
+        }
     }
 
     // 내부 헬퍼 클래스: 시간 블록 (예약 또는 시간표)

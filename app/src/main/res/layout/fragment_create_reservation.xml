@@ -56,52 +56,45 @@
                     android:textAppearance="?attr/textAppearanceBodyMedium"
                     android:layout_marginBottom="8dp"/>
 
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/buttonSelectDate"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="날짜 선택"
+                    android:layout_marginBottom="16dp"
+                    app:icon="@android:drawable/ic_menu_my_calendar"
+                    style="@style/Widget.Material3.Button.OutlinedButton"/>
+
                 <TextView
                     android:id="@+id/textDateInfo"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:text="날짜: -"
                     android:textAppearance="?attr/textAppearanceBodyMedium"
+                    android:layout_marginBottom="16dp"/>
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="예약 시간 선택 (2시간 단위)"
+                    android:textAppearance="?attr/textAppearanceTitleSmall"
                     android:layout_marginBottom="8dp"/>
 
-                <LinearLayout
+                <TextView
+                    android:id="@+id/textSlotHint"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:layout_marginBottom="12dp">
+                    android:text="강의실과 날짜를 선택하면 예약 가능한 시간대가 표시됩니다"
+                    android:textAppearance="?attr/textAppearanceBodySmall"
+                    android:textColor="?attr/colorOnSurfaceVariant"
+                    android:layout_marginBottom="8dp"/>
 
-                    <com.google.android.material.textfield.TextInputLayout
-                        android:id="@+id/inputStartTimeLayout"
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:hint="시작 시간"
-                        android:layout_marginEnd="8dp"
-                        style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu">
-
-                        <AutoCompleteTextView
-                            android:id="@+id/inputStartTime"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:inputType="none"/>
-                    </com.google.android.material.textfield.TextInputLayout>
-
-                    <com.google.android.material.textfield.TextInputLayout
-                        android:id="@+id/inputEndTimeLayout"
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:hint="종료 시간"
-                        android:layout_marginStart="8dp"
-                        style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu">
-
-                        <AutoCompleteTextView
-                            android:id="@+id/inputEndTime"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:inputType="none"/>
-                    </com.google.android.material.textfield.TextInputLayout>
-                </LinearLayout>
+                <androidx.recyclerview.widget.RecyclerView
+                    android:id="@+id/recyclerTimeSlots"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="16dp"
+                    android:nestedScrollingEnabled="false"/>
 
                 <com.google.android.material.textfield.TextInputLayout
                     android:id="@+id/inputAttendeesLayout"

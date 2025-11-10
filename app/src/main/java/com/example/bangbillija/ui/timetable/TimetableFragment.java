@@ -1,9 +1,13 @@
 package com.example.bangbillija.ui.timetable;
 
 import android.app.TimePickerDialog;
+import android.content.ContentValues;
 import android.content.Intent;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
+import android.os.Environment;
+import android.provider.MediaStore;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -29,8 +33,10 @@ import com.example.bangbillija.util.TimetableCSVParser;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.textfield.TextInputEditText;
 
+import java.io.File;
 import java.io.FileOutputStream;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.time.DayOfWeek;
 import java.time.LocalTime;
 import java.util.ArrayList;
@@ -149,9 +155,41 @@ public class TimetableFragment extends Fragment {
     private void downloadTemplate() {
         try {
             InputStream inputStream = requireContext().getAssets().open("timetable_template.csv");
-            FileOutputStream outputStream = new FileOutputStream(
-                    requireContext().getExternalFilesDir(null) + "/timetable_template.csv");
 
+            String fileName = "timetable_template.csv";
+            OutputStream outputStream;
+            String savePath;
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                // Android 10+ (API 29+): Use MediaStore API
+                ContentValues values = new ContentValues();
+                values.put(MediaStore.MediaColumns.DISPLAY_NAME, fileName);
+                values.put(MediaStore.MediaColumns.MIME_TYPE, "text/csv");
+                values.put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS);
+
+                Uri uri = requireContext().getContentResolver().insert(
+                        MediaStore.Downloads.EXTERNAL_CONTENT_URI, values);
+
+                if (uri == null) {
+                    throw new Exception("URI 생성 실패");
+                }
+
+                outputStream = requireContext().getContentResolver().openOutputStream(uri);
+                savePath = "다운로드 폴더";
+            } else {
+                // Android 9 and below: Use legacy approach
+                File downloadsDir = Environment.getExternalStoragePublicDirectory(
+                        Environment.DIRECTORY_DOWNLOADS);
+                File outputFile = new File(downloadsDir, fileName);
+                outputStream = new FileOutputStream(outputFile);
+                savePath = outputFile.getAbsolutePath();
+            }
+
+            if (outputStream == null) {
+                throw new Exception("파일 스트림 생성 실패");
+            }
+
+            // Copy data
             byte[] buffer = new byte[1024];
             int length;
             while ((length = inputStream.read(buffer)) > 0) {
@@ -162,13 +200,13 @@ public class TimetableFragment extends Fragment {
             outputStream.close();
 
             Toast.makeText(requireContext(),
-                    "템플릿이 다운로드 폴더에 저장되었습니다",
+                    "템플릿이 " + savePath + "에 저장되었습니다",
                     Toast.LENGTH_LONG).show();
 
         } catch (Exception e) {
             Toast.makeText(requireContext(),
                     "템플릿 다운로드 실패: " + e.getMessage(),
-                    Toast.LENGTH_SHORT).show();
+                    Toast.LENGTH_LONG).show();
         }
     }
 
