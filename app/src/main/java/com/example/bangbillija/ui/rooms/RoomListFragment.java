@@ -137,7 +137,8 @@ public class RoomListFragment extends Fragment implements RoomListAdapter.RoomCl
         viewModel.selectRoom(room);
         viewModel.focusReservation(null);
         if (getActivity() instanceof Navigator) {
-            ((Navigator) getActivity()).openReservationDetail();
+            // 강의실 클릭 시 바로 예약 화면으로 이동
+            ((Navigator) getActivity()).openCreateReservation();
         }
     }
 

@@ -58,11 +58,6 @@ public class MyReservationsFragment extends Fragment implements MyReservationsAd
         binding.recyclerReservations.setAdapter(adapter);
 
         binding.chipGroupFilters.setOnCheckedStateChangeListener((group, ids) -> refreshList());
-        binding.buttonCreateReservation.setOnClickListener(v -> {
-            if (getActivity() instanceof Navigator) {
-                ((Navigator) getActivity()).openCreateReservation();
-            }
-        });
 
         // 로그아웃 버튼
         binding.buttonLogout.setOnClickListener(v -> showLogoutDialog());

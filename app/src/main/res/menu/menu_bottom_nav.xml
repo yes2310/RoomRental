@@ -9,10 +9,6 @@
         android:icon="@android:drawable/ic_menu_recent_history"
         android:title="@string/menu_timetable" />
     <item
-        android:id="@+id/menu_calendar"
-        android:icon="@android:drawable/ic_menu_month"
-        android:title="@string/menu_calendar" />
-    <item
         android:id="@+id/menu_qr"
         android:icon="@android:drawable/ic_menu_camera"
         android:title="@string/menu_qr" />

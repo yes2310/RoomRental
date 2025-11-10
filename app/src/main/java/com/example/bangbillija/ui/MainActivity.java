@@ -13,7 +13,6 @@ import androidx.lifecycle.ViewModelProvider;
 import com.example.bangbillija.R;
 import com.example.bangbillija.core.SharedReservationViewModel;
 import com.example.bangbillija.service.AuthManager;
-import com.example.bangbillija.ui.calendar.CalendarFragment;
 import com.example.bangbillija.ui.checkin.QrCheckInFragment;
 import com.example.bangbillija.ui.reservations.CreateReservationFragment;
 import com.example.bangbillija.ui.reservations.MyReservationsFragment;
@@ -36,7 +35,6 @@ public class MainActivity extends AppCompatActivity implements Navigator {
 
     private final Fragment roomsFragment = new RoomListFragment();
     private final Fragment timetableFragment = new TimetableFragment();
-    private final Fragment calendarFragment = new CalendarFragment();
     private final Fragment qrFragment = new QrCheckInFragment();
     private final Fragment myReservationsFragment = new MyReservationsFragment();
     private final Fragment detailFragment = new ReservationDetailFragment();
@@ -59,6 +57,11 @@ public class MainActivity extends AppCompatActivity implements Navigator {
         toolbarTitle = findViewById(R.id.toolbarTitle);
         bottomNavigationView = findViewById(R.id.bottomNav);
 
+        // 관리자가 아니면 시간표 탭 숨기기
+        if (!authManager.isAdmin()) {
+            bottomNavigationView.getMenu().findItem(R.id.menu_timetable).setVisible(false);
+        }
+
         viewModel = new ViewModelProvider(this).get(SharedReservationViewModel.class);
         viewModel.getToolbarTitle().observe(this, title -> {
             if (title != null) {
@@ -73,9 +76,6 @@ public class MainActivity extends AppCompatActivity implements Navigator {
                 return true;
             } else if (itemId == R.id.menu_timetable) {
                 switchTo(timetableFragment, getString(R.string.title_timetable), false);
-                return true;
-            } else if (itemId == R.id.menu_calendar) {
-                switchTo(calendarFragment, getString(R.string.title_calendar), false);
                 return true;
             } else if (itemId == R.id.menu_qr) {
                 switchTo(qrFragment, getString(R.string.title_qr), false);
@@ -186,9 +186,6 @@ public class MainActivity extends AppCompatActivity implements Navigator {
         } else if (fragment instanceof TimetableFragment) {
             viewModel.updateToolbarTitle(getString(R.string.title_timetable));
             bottomNavigationView.setSelectedItemId(R.id.menu_timetable);
-        } else if (fragment instanceof CalendarFragment) {
-            viewModel.updateToolbarTitle(getString(R.string.title_calendar));
-            bottomNavigationView.setSelectedItemId(R.id.menu_calendar);
         } else if (fragment instanceof QrCheckInFragment) {
             viewModel.updateToolbarTitle(getString(R.string.title_qr));
             bottomNavigationView.setSelectedItemId(R.id.menu_qr);
