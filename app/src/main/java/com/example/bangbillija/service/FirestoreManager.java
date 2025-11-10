@@ -68,6 +68,14 @@ public class FirestoreManager {
                 .addOnFailureListener(callback::onFailure);
     }
 
+    public void deleteRoom(String roomId, FirestoreCallback<Void> callback) {
+        db.collection(COLLECTION_ROOMS)
+                .document(roomId)
+                .delete()
+                .addOnSuccessListener(aVoid -> callback.onSuccess(null))
+                .addOnFailureListener(callback::onFailure);
+    }
+
     // ==================== Reservation Operations ====================
 
     public void createReservation(Reservation reservation, String userId, String userEmail, FirestoreCallback<String> callback) {

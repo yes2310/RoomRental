@@ -81,4 +81,20 @@ public class RoomRepository {
             }
         });
     }
+
+    public void deleteRoom(String roomId, FirestoreManager.FirestoreCallback<Void> callback) {
+        firestoreManager.deleteRoom(roomId, new FirestoreManager.FirestoreCallback<Void>() {
+            @Override
+            public void onSuccess(Void result) {
+                loadRooms(); // Refresh list after deleting
+                callback.onSuccess(result);
+            }
+
+            @Override
+            public void onFailure(Exception e) {
+                error.setValue(e.getMessage());
+                callback.onFailure(e);
+            }
+        });
+    }
 }

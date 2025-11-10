@@ -149,12 +149,64 @@ public class RoomListFragment extends Fragment implements RoomListAdapter.RoomCl
 
     @Override
     public void onRoomLongClicked(Room room) {
-        // 관리자만 QR 코드 생성 가능
+        // 관리자만 메뉴 표시
         if (!authManager.isAdmin()) {
             return;
         }
 
-        showRoomQRCodeDialog(room);
+        showAdminMenuDialog(room);
+    }
+
+    private void showAdminMenuDialog(Room room) {
+        String[] options = {"QR 코드 생성", "강의실 삭제"};
+
+        new MaterialAlertDialogBuilder(requireContext())
+                .setTitle(room.getName() + " 관리")
+                .setItems(options, (dialog, which) -> {
+                    if (which == 0) {
+                        // QR 코드 생성
+                        showRoomQRCodeDialog(room);
+                    } else if (which == 1) {
+                        // 강의실 삭제
+                        showDeleteRoomConfirmDialog(room);
+                    }
+                })
+                .setNegativeButton("취소", null)
+                .show();
+    }
+
+    private void showDeleteRoomConfirmDialog(Room room) {
+        new MaterialAlertDialogBuilder(requireContext())
+                .setTitle("강의실 삭제")
+                .setMessage("'" + room.getName() + "' 강의실을 삭제하시겠습니까?\n\n" +
+                        "위치: " + room.getBuilding() + " " + room.getFloor() + "\n" +
+                        "수용인원: " + room.getCapacity() + "명\n\n" +
+                        "⚠️ 이 강의실과 관련된 모든 예약도 함께 삭제됩니다.\n" +
+                        "이 작업은 되돌릴 수 없습니다.")
+                .setPositiveButton("삭제", (dialog, which) -> {
+                    com.example.bangbillija.data.RoomRepository.getInstance()
+                            .deleteRoom(room.getId(), new com.example.bangbillija.service.FirestoreManager.FirestoreCallback<Void>() {
+                                @Override
+                                public void onSuccess(Void result) {
+                                    if (binding != null) {
+                                        Snackbar.make(binding.getRoot(),
+                                                "강의실이 삭제되었습니다",
+                                                Snackbar.LENGTH_SHORT).show();
+                                    }
+                                }
+
+                                @Override
+                                public void onFailure(Exception e) {
+                                    if (binding != null) {
+                                        Snackbar.make(binding.getRoot(),
+                                                "삭제 실패: " + e.getMessage(),
+                                                Snackbar.LENGTH_LONG).show();
+                                    }
+                                }
+                            });
+                })
+                .setNegativeButton("취소", null)
+                .show();
     }
 
     private void showRoomQRCodeDialog(Room room) {
