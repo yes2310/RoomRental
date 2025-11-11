@@ -1,10 +1,10 @@
 package com.example.bangbillija.ui.calendar;
 
-import android.graphics.Color;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.CalendarView;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -12,7 +12,6 @@ import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
 
-import com.example.bangbillija.R;
 import com.example.bangbillija.core.SharedReservationViewModel;
 import com.example.bangbillija.databinding.FragmentCalendarBinding;
 import com.example.bangbillija.model.Reservation;
@@ -20,20 +19,14 @@ import com.example.bangbillija.service.AuthManager;
 import com.example.bangbillija.service.FirestoreManager;
 import com.example.bangbillija.ui.Navigator;
 import com.example.bangbillija.ui.reservations.MyReservationsAdapter;
-import com.prolificinteractive.materialcalendarview.CalendarDay;
-import com.prolificinteractive.materialcalendarview.DayViewDecorator;
-import com.prolificinteractive.materialcalendarview.DayViewFacade;
-import com.prolificinteractive.materialcalendarview.MaterialCalendarView;
-import com.prolificinteractive.materialcalendarview.spans.DotSpan;
 
-import org.threeten.bp.LocalDate;
-import org.threeten.bp.format.DateTimeFormatter;
-
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
-import java.util.Set;
 
 public class CalendarFragment extends Fragment {
 
@@ -87,23 +80,18 @@ public class CalendarFragment extends Fragment {
     }
 
     private void setupCalendar() {
-        binding.calendarView.setSelectedDate(CalendarDay.today());
+        // 오늘 날짜로 초기화
+        selectedDate = LocalDate.now();
+        updateSelectedDateInfo();
 
-        binding.calendarView.setOnDateChangedListener((widget, date, selected) -> {
-            selectedDate = LocalDate.of(date.getYear(), date.getMonth(), date.getDay());
-            updateSelectedDateInfo();
-            showReservationsForDate(selectedDate);
+        binding.calendarView.setOnDateChangeListener(new CalendarView.OnDateChangeListener() {
+            @Override
+            public void onSelectedDayChange(@NonNull CalendarView view, int year, int month, int dayOfMonth) {
+                selectedDate = LocalDate.of(year, month + 1, dayOfMonth);
+                updateSelectedDateInfo();
+                showReservationsForDate(selectedDate);
+            }
         });
-    }
-
-    // java.time.LocalDate를 org.threeten.bp.LocalDate로 변환
-    private LocalDate toThreeTenLocalDate(java.time.LocalDate javaDate) {
-        return LocalDate.of(javaDate.getYear(), javaDate.getMonthValue(), javaDate.getDayOfMonth());
-    }
-
-    // org.threeten.bp.LocalDate를 java.time.LocalDate로 변환
-    private java.time.LocalDate toJavaLocalDate(LocalDate threeTenDate) {
-        return java.time.LocalDate.of(threeTenDate.getYear(), threeTenDate.getMonthValue(), threeTenDate.getDayOfMonth());
     }
 
     private void loadReservations() {
@@ -118,7 +106,10 @@ public class CalendarFragment extends Fragment {
             @Override
             public void onSuccess(List<Reservation> reservations) {
                 allReservations = reservations;
-                updateCalendarDots();
+                // 현재 선택된 날짜의 예약 표시
+                if (selectedDate != null) {
+                    showReservationsForDate(selectedDate);
+                }
             }
 
             @Override
@@ -126,25 +117,6 @@ public class CalendarFragment extends Fragment {
                 // Handle error silently
             }
         });
-    }
-
-    private void updateCalendarDots() {
-        // 예약이 있는 날짜들을 수집
-        Set<CalendarDay> datesWithReservations = new HashSet<>();
-
-        for (Reservation reservation : allReservations) {
-            java.time.LocalDate javaDate = reservation.getDate();
-            LocalDate date = toThreeTenLocalDate(javaDate);
-            datesWithReservations.add(CalendarDay.from(
-                    date.getYear(),
-                    date.getMonthValue(),
-                    date.getDayOfMonth()
-            ));
-        }
-
-        // 점 데코레이터 추가
-        binding.calendarView.removeDecorators();
-        binding.calendarView.addDecorator(new DotDecorator(Color.parseColor("#FF6200EE"), datesWithReservations));
     }
 
     private void updateSelectedDateInfo() {
@@ -155,10 +127,9 @@ public class CalendarFragment extends Fragment {
 
     private void showReservationsForDate(LocalDate date) {
         List<Reservation> dayReservations = new ArrayList<>();
-        java.time.LocalDate javaDate = toJavaLocalDate(date);
 
         for (Reservation reservation : allReservations) {
-            if (reservation.getDate().equals(javaDate)) {
+            if (reservation.getDate().equals(date)) {
                 dayReservations.add(reservation);
             }
         }
@@ -181,26 +152,5 @@ public class CalendarFragment extends Fragment {
     public void onDestroyView() {
         super.onDestroyView();
         binding = null;
-    }
-
-    // 점 데코레이터 클래스
-    private static class DotDecorator implements DayViewDecorator {
-        private final int color;
-        private final Set<CalendarDay> dates;
-
-        DotDecorator(int color, Set<CalendarDay> dates) {
-            this.color = color;
-            this.dates = dates;
-        }
-
-        @Override
-        public boolean shouldDecorate(CalendarDay day) {
-            return dates.contains(day);
-        }
-
-        @Override
-        public void decorate(DayViewFacade view) {
-            view.addSpan(new DotSpan(5, color));
-        }
     }
 }
