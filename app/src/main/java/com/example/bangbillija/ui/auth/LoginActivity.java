@@ -53,7 +53,6 @@ public class LoginActivity extends AppCompatActivity {
             @Override
             public void onSuccess() {
                 setLoading(false);
-                Snackbar.make(binding.getRoot(), R.string.message_login_success, Snackbar.LENGTH_SHORT).show();
                 navigateToMain();
             }
 
