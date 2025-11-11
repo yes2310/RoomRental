@@ -197,6 +197,9 @@ public class MainActivity extends AppCompatActivity implements Navigator {
         } else if (fragment instanceof MyReservationsFragment) {
             viewModel.updateToolbarTitle(getString(R.string.title_my_reservations));
             bottomNavigationView.setSelectedItemId(R.id.menu_my);
+        } else if (fragment instanceof CalendarFragment) {
+            viewModel.updateToolbarTitle(getString(R.string.menu_calendar));
+            bottomNavigationView.setSelectedItemId(R.id.menu_calendar);
         } else {
             viewModel.updateToolbarTitle(getString(R.string.title_rooms));
             bottomNavigationView.setSelectedItemId(R.id.menu_rooms);

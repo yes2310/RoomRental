@@ -9,10 +9,11 @@ import android.view.ViewGroup;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
+import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
 
 import com.example.bangbillija.R;
-import com.example.bangbillija.data.ReservationRepository;
+import com.example.bangbillija.core.SharedReservationViewModel;
 import com.example.bangbillija.databinding.FragmentCalendarBinding;
 import com.example.bangbillija.model.Reservation;
 import com.example.bangbillija.service.AuthManager;
@@ -31,17 +32,18 @@ import org.threeten.bp.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 
 public class CalendarFragment extends Fragment {
 
     private FragmentCalendarBinding binding;
-    private ReservationRepository reservationRepository;
+    private SharedReservationViewModel viewModel;
     private AuthManager authManager;
     private MyReservationsAdapter reservationAdapter;
     private List<Reservation> allReservations = new ArrayList<>();
     private LocalDate selectedDate = null;
-    private final DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("yyyy년 M월 d일 (E)");
+    private final DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("yyyy년 M월 d일 (E)", Locale.KOREAN);
 
     @Nullable
     @Override
@@ -55,7 +57,7 @@ public class CalendarFragment extends Fragment {
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
 
-        reservationRepository = ReservationRepository.getInstance();
+        viewModel = new ViewModelProvider(requireActivity()).get(SharedReservationViewModel.class);
         authManager = AuthManager.getInstance();
 
         setupRecyclerView();
@@ -67,6 +69,7 @@ public class CalendarFragment extends Fragment {
         reservationAdapter = new MyReservationsAdapter(new MyReservationsAdapter.ReservationClickListener() {
             @Override
             public void onPrimaryAction(Reservation reservation) {
+                viewModel.selectReservation(reservation);
                 if (getActivity() instanceof Navigator) {
                     ((Navigator) getActivity()).openReservationDetail();
                 }
