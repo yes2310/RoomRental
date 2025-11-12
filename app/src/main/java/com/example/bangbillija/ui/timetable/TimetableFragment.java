@@ -189,6 +189,10 @@ public class TimetableFragment extends Fragment {
                 throw new Exception("파일 스트림 생성 실패");
             }
 
+            // UTF-8 BOM 추가 (엑셀에서 한글이 깨지지 않도록)
+            byte[] bom = new byte[]{(byte) 0xEF, (byte) 0xBB, (byte) 0xBF};
+            outputStream.write(bom);
+
             // Copy data
             byte[] buffer = new byte[1024];
             int length;
