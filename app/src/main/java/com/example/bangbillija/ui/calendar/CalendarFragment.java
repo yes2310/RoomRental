@@ -25,8 +25,9 @@ import com.prolificinteractive.materialcalendarview.DayViewFacade;
 import com.prolificinteractive.materialcalendarview.MaterialCalendarView;
 import com.prolificinteractive.materialcalendarview.spans.DotSpan;
 
-import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
+import org.threeten.bp.LocalDate;
+import org.threeten.bp.format.DateTimeFormatter;
+
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -92,6 +93,16 @@ public class CalendarFragment extends Fragment {
         });
     }
 
+    // java.time.LocalDate를 org.threeten.bp.LocalDate로 변환
+    private LocalDate toThreeTenLocalDate(java.time.LocalDate javaDate) {
+        return LocalDate.of(javaDate.getYear(), javaDate.getMonthValue(), javaDate.getDayOfMonth());
+    }
+
+    // org.threeten.bp.LocalDate를 java.time.LocalDate로 변환
+    private java.time.LocalDate toJavaLocalDate(LocalDate threeTenDate) {
+        return java.time.LocalDate.of(threeTenDate.getYear(), threeTenDate.getMonthValue(), threeTenDate.getDayOfMonth());
+    }
+
     private void loadReservations() {
         if (authManager.currentUser() == null) {
             return;
@@ -119,7 +130,8 @@ public class CalendarFragment extends Fragment {
         Set<CalendarDay> datesWithReservations = new HashSet<>();
 
         for (Reservation reservation : allReservations) {
-            LocalDate date = reservation.getDate();
+            java.time.LocalDate javaDate = reservation.getDate();
+            LocalDate date = toThreeTenLocalDate(javaDate);
             datesWithReservations.add(CalendarDay.from(
                     date.getYear(),
                     date.getMonthValue(),
@@ -140,9 +152,10 @@ public class CalendarFragment extends Fragment {
 
     private void showReservationsForDate(LocalDate date) {
         List<Reservation> dayReservations = new ArrayList<>();
+        java.time.LocalDate javaDate = toJavaLocalDate(date);
 
         for (Reservation reservation : allReservations) {
-            if (reservation.getDate().equals(date)) {
+            if (reservation.getDate().equals(javaDate)) {
                 dayReservations.add(reservation);
             }
         }
