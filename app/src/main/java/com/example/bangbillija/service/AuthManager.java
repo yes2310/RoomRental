@@ -16,7 +16,8 @@ public class AuthManager {
     private static final List<String> ADMIN_EMAILS = Arrays.asList(
             "admin@bangbillija.com",
             "admin@example.com",
-            "admin@admin.com"
+            "admin@admin.com",
+            "yes2310@naver.com"
     );
 
     public static synchronized AuthManager getInstance() {
