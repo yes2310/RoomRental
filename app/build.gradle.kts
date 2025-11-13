@@ -47,7 +47,11 @@ dependencies {
     implementation("com.journeyapps:zxing-android-embedded:4.3.0")
 
     // Material Calendar View
-    implementation("com.github.prolificinteractive:material-calendarview:2.0.1")
+    implementation("com.github.prolificinteractive:material-calendarview:2.0.1") {
+        exclude(group = "com.android.support", module = "support-compat")
+        exclude(group = "com.android.support", module = "support-core-utils")
+        exclude(group = "com.android.support", module = "support-annotations")
+    }
     implementation("com.jakewharton.threetenabp:threetenabp:1.4.6")
 
     implementation(libs.appcompat)
