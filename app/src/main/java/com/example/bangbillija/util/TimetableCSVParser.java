@@ -54,6 +54,26 @@ public class TimetableCSVParser {
         return entries;
     }
 
+    /**
+     * CSV 필드에서 앞뒤 공백과 따옴표 제거
+     */
+    private static String cleanField(String field) {
+        if (field == null) {
+            return "";
+        }
+        // 앞뒤 공백 제거
+        field = field.trim();
+        // 앞뒤 큰따옴표 제거
+        if (field.startsWith("\"") && field.endsWith("\"") && field.length() >= 2) {
+            field = field.substring(1, field.length() - 1);
+        }
+        // 앞뒤 작은따옴표 제거
+        if (field.startsWith("'") && field.endsWith("'") && field.length() >= 2) {
+            field = field.substring(1, field.length() - 1);
+        }
+        return field.trim();
+    }
+
     private static TimetableEntry parseLine(String line) throws Exception {
         String[] parts = line.split(",");
 
@@ -61,15 +81,16 @@ public class TimetableCSVParser {
             throw new Exception("필드가 부족합니다. 최소 8개 필드 필요 (현재: " + parts.length + "개)");
         }
 
-        String courseName = parts[0].trim();
-        String roomId = parts[1].trim();
-        String roomName = parts[2].trim();
-        String dayStr = parts[3].trim();
-        String startTimeStr = parts[4].trim();
-        String endTimeStr = parts[5].trim();
-        String attendeesStr = parts[6].trim();
-        String professor = parts[7].trim();
-        String note = parts.length > 8 ? parts[8].trim() : "";
+        // 각 필드에서 따옴표 제거 및 trim
+        String courseName = cleanField(parts[0]);
+        String roomId = cleanField(parts[1]);
+        String roomName = cleanField(parts[2]);
+        String dayStr = cleanField(parts[3]);
+        String startTimeStr = cleanField(parts[4]);
+        String endTimeStr = cleanField(parts[5]);
+        String attendeesStr = cleanField(parts[6]);
+        String professor = cleanField(parts[7]);
+        String note = parts.length > 8 ? cleanField(parts[8]) : "";
 
         // 요일 파싱
         DayOfWeek dayOfWeek = parseDayOfWeek(dayStr);
