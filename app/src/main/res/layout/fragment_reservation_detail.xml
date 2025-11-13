@@ -125,6 +125,15 @@
                 android:text="@string/reservation_check_in" />
 
             <com.google.android.material.button.MaterialButton
+                android:id="@+id/buttonApprove"
+                style="@style/Widget.MaterialComponents.Button"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="8dp"
+                android:text="승인"
+                android:visibility="gone" />
+
+            <com.google.android.material.button.MaterialButton
                 android:id="@+id/buttonEdit"
                 style="@style/Widget.MaterialComponents.Button.OutlinedButton"
                 android:layout_width="wrap_content"

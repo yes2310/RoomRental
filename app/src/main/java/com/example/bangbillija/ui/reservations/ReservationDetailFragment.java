@@ -19,6 +19,7 @@ import com.example.bangbillija.databinding.ItemDetailRowBinding;
 import com.example.bangbillija.model.Reservation;
 import com.example.bangbillija.model.ReservationStatus;
 import com.example.bangbillija.model.Room;
+import com.example.bangbillija.service.AuthManager;
 import com.example.bangbillija.service.FirestoreManager;
 import com.example.bangbillija.ui.Navigator;
 import com.example.bangbillija.util.QRCodeUtil;
@@ -36,6 +37,7 @@ public class ReservationDetailFragment extends Fragment {
     private FragmentReservationDetailBinding binding;
     private SharedReservationViewModel viewModel;
     private ReservationRepository reservationRepository;
+    private AuthManager authManager;
     private Room currentRoom;
     private Reservation currentReservation;
 
@@ -55,6 +57,7 @@ public class ReservationDetailFragment extends Fragment {
         super.onViewCreated(view, savedInstanceState);
         viewModel = new ViewModelProvider(requireActivity()).get(SharedReservationViewModel.class);
         reservationRepository = ReservationRepository.getInstance();
+        authManager = AuthManager.getInstance();
 
         viewModel.getSelectedRoom().observe(getViewLifecycleOwner(), room -> {
             currentRoom = room;
@@ -76,6 +79,7 @@ public class ReservationDetailFragment extends Fragment {
             }
         });
 
+        binding.buttonApprove.setOnClickListener(v -> showApprovalDialog());
         binding.buttonEdit.setOnClickListener(v -> showEditDialog());
         binding.buttonCancel.setOnClickListener(v -> showCancelDialog());
     }
@@ -126,6 +130,13 @@ public class ReservationDetailFragment extends Fragment {
             generateAndDisplayQRCode();
         } else {
             binding.cardQrCode.setVisibility(View.GONE);
+        }
+
+        // 승인 버튼 표시 (관리자이고 예약이 PENDING 상태일 때만)
+        if (authManager.isAdmin() && currentReservation.getStatus() == ReservationStatus.PENDING) {
+            binding.buttonApprove.setVisibility(View.VISIBLE);
+        } else {
+            binding.buttonApprove.setVisibility(View.GONE);
         }
     }
 
@@ -278,6 +289,52 @@ public class ReservationDetailFragment extends Fragment {
                     );
                 })
                 .setNegativeButton("돌아가기", null)
+                .show();
+    }
+
+    private void showApprovalDialog() {
+        if (currentReservation == null) {
+            Snackbar.make(binding.getRoot(), "예약을 선택하세요", Snackbar.LENGTH_SHORT).show();
+            return;
+        }
+
+        if (currentReservation.getStatus() != ReservationStatus.PENDING) {
+            Snackbar.make(binding.getRoot(), "이미 처리된 예약입니다", Snackbar.LENGTH_SHORT).show();
+            return;
+        }
+
+        new MaterialAlertDialogBuilder(requireContext())
+                .setTitle("예약 승인")
+                .setMessage("이 예약을 승인하시겠습니까?\n\n" +
+                        "예약자: " + currentReservation.getOwner() + "\n" +
+                        "날짜: " + currentReservation.getDate().format(dateFormatter) + "\n" +
+                        "시간: " + currentReservation.getStartTime().format(timeFormatter) +
+                        " - " + currentReservation.getEndTime().format(timeFormatter))
+                .setPositiveButton("승인", (dialog, which) -> {
+                    java.util.Map<String, Object> updates = new java.util.HashMap<>();
+                    updates.put("status", ReservationStatus.RESERVED.name());
+
+                    reservationRepository.updateReservationByReservationId(
+                            currentReservation.getId(),
+                            updates,
+                            new FirestoreManager.FirestoreCallback<Void>() {
+                                @Override
+                                public void onSuccess(Void result) {
+                                    Snackbar.make(binding.getRoot(), "예약이 승인되었습니다", Snackbar.LENGTH_SHORT).show();
+                                    if (getActivity() != null) {
+                                        requireActivity().onBackPressed();
+                                    }
+                                }
+
+                                @Override
+                                public void onFailure(Exception e) {
+                                    Snackbar.make(binding.getRoot(), "승인 실패: " + e.getMessage(),
+                                            Snackbar.LENGTH_LONG).show();
+                                }
+                            }
+                    );
+                })
+                .setNegativeButton("취소", null)
                 .show();
     }
 
