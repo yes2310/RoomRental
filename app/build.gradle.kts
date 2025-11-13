@@ -48,6 +48,7 @@ dependencies {
 
     // Material Calendar View
     implementation("com.github.prolificinteractive:material-calendarview:2.0.1")
+    implementation("com.jakewharton.threetenabp:threetenabp:1.4.6")
 
     implementation(libs.appcompat)
     implementation(libs.material)
