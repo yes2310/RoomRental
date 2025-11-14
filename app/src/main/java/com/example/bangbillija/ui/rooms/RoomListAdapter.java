@@ -22,6 +22,7 @@ public class RoomListAdapter extends ListAdapter<Room, RoomListAdapter.RoomViewH
 
     interface RoomClickListener {
         void onRoomClicked(Room room);
+        void onRoomLongClicked(Room room);
     }
 
     private final RoomClickListener listener;
@@ -57,6 +58,14 @@ public class RoomListAdapter extends ListAdapter<Room, RoomListAdapter.RoomViewH
                 if (listener != null) {
                     listener.onRoomClicked(room);
                 }
+            });
+
+            binding.getRoot().setOnLongClickListener(v -> {
+                if (listener != null) {
+                    listener.onRoomLongClicked(room);
+                    return true;
+                }
+                return false;
             });
 
             binding.textRoomName.setText(room.getName());

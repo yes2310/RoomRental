@@ -54,4 +54,16 @@ public class QRCodeUtil {
         return String.format("{\"reservationId\":\"%s\",\"roomId\":\"%s\",\"date\":\"%s\",\"startTime\":\"%s\"}",
                 reservationId, roomId, date, startTime);
     }
+
+    /**
+     * 강의실 정보를 QR 코드 문자열로 변환 (체크인용)
+     * @param roomId 강의실 ID
+     * @param roomName 강의실 이름
+     * @return QR 코드 문자열 (JSON 형식)
+     */
+    public static String createRoomQRContent(String roomId, String roomName) {
+        // JSON 형식으로 강의실 정보를 인코딩
+        return String.format("{\"roomId\":\"%s\",\"roomName\":\"%s\"}",
+                roomId, roomName);
+    }
 }

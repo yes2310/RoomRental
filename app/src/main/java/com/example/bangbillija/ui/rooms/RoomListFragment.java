@@ -1,10 +1,12 @@
 package com.example.bangbillija.ui.rooms;
 
+import android.graphics.Bitmap;
 import android.os.Bundle;
 import android.text.TextUtils;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ImageView;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -18,8 +20,11 @@ import com.example.bangbillija.model.Room;
 import com.example.bangbillija.model.RoomStatus;
 import com.example.bangbillija.service.AuthManager;
 import com.example.bangbillija.ui.Navigator;
+import com.example.bangbillija.util.QRCodeUtil;
 import com.example.bangbillija.util.SimpleTextWatcher;
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.snackbar.Snackbar;
+import com.google.zxing.WriterException;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -139,6 +144,44 @@ public class RoomListFragment extends Fragment implements RoomListAdapter.RoomCl
         if (getActivity() instanceof Navigator) {
             // 강의실 클릭 시 바로 예약 화면으로 이동
             ((Navigator) getActivity()).openCreateReservation();
+        }
+    }
+
+    @Override
+    public void onRoomLongClicked(Room room) {
+        // 관리자만 QR 코드 생성 가능
+        if (!authManager.isAdmin()) {
+            return;
+        }
+
+        showRoomQRCodeDialog(room);
+    }
+
+    private void showRoomQRCodeDialog(Room room) {
+        try {
+            // QR 코드 생성
+            String qrContent = QRCodeUtil.createRoomQRContent(room.getId(), room.getName());
+            Bitmap qrBitmap = QRCodeUtil.generateQRCode(qrContent, 500, 500);
+
+            // 다이얼로그에 표시할 ImageView 생성
+            ImageView imageView = new ImageView(requireContext());
+            imageView.setImageBitmap(qrBitmap);
+            imageView.setPadding(32, 32, 32, 32);
+
+            new MaterialAlertDialogBuilder(requireContext())
+                    .setTitle(room.getName() + " QR 코드")
+                    .setMessage("사용자가 이 QR 코드를 스캔하여 체크인할 수 있습니다.\n\n" +
+                            "QR 코드를 출력하거나 화면에 표시하여 공유하세요.")
+                    .setView(imageView)
+                    .setPositiveButton("확인", null)
+                    .show();
+
+            Snackbar.make(binding.getRoot(), "QR 코드가 생성되었습니다", Snackbar.LENGTH_SHORT).show();
+
+        } catch (WriterException e) {
+            android.util.Log.e("RoomListFragment", "QR 코드 생성 실패", e);
+            Snackbar.make(binding.getRoot(), "QR 코드 생성 실패: " + e.getMessage(),
+                    Snackbar.LENGTH_LONG).show();
         }
     }
 
