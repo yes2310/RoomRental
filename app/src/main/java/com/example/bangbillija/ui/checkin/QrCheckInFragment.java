@@ -126,51 +126,58 @@ public class QrCheckInFragment extends Fragment {
             firestoreManager.getReservationsByUser(user.getUid(), new FirestoreManager.FirestoreCallback<List<Reservation>>() {
                 @Override
                 public void onSuccess(List<Reservation> reservations) {
-                    // 현재 시간에 해당 강의실 예약 찾기
+                    // 오늘 날짜, 해당 강의실의 예약 찾기
                     Reservation matchingReservation = null;
 
                     for (Reservation reservation : reservations) {
-                        // 조건: 오늘, 해당 강의실, RESERVED 상태 (확정된 예약만)
-                        if (reservation.getDate().equals(today)
-                                && reservation.getRoomId().equals(roomId)
-                                && reservation.getStatus() == ReservationStatus.RESERVED
-                                && !now.isBefore(reservation.getStartTime().minusMinutes(10))
-                                && !now.isAfter(reservation.getEndTime())) {
-                            matchingReservation = reservation;
-                            break;
+                        // 1. 오늘, 해당 강의실인지 확인
+                        if (!reservation.getDate().equals(today) || !reservation.getRoomId().equals(roomId)) {
+                            continue;
                         }
-                    }
 
-                    // PENDING 상태의 예약 확인 (관리자 승인 대기)
-                    if (matchingReservation == null) {
-                        for (Reservation reservation : reservations) {
-                            if (reservation.getDate().equals(today)
-                                    && reservation.getRoomId().equals(roomId)
-                                    && reservation.getStatus() == ReservationStatus.PENDING
-                                    && !now.isBefore(reservation.getStartTime().minusMinutes(10))
-                                    && !now.isAfter(reservation.getEndTime())) {
-                                Snackbar.make(binding.getRoot(),
-                                        "이 예약은 아직 관리자 승인 대기 중입니다\n승인 후에 체크인할 수 있습니다",
-                                        Snackbar.LENGTH_LONG).show();
-                                return;
-                            }
+                        // 2. PENDING 상태 체크 (승인 대기 중)
+                        if (reservation.getStatus() == ReservationStatus.PENDING) {
+                            Snackbar.make(binding.getRoot(),
+                                    "이 예약은 아직 관리자 승인 대기 중입니다\n승인 후에 체크인할 수 있습니다",
+                                    Snackbar.LENGTH_LONG).show();
+                            return;
                         }
+
+                        // 3. RESERVED 상태만 체크인 가능
+                        if (reservation.getStatus() != ReservationStatus.RESERVED) {
+                            continue;
+                        }
+
+                        // 4. 체크인 가능 시간 확인: 예약 시작 10분 전부터 예약 종료 시간까지
+                        LocalTime checkInStart = reservation.getStartTime().minusMinutes(10);
+                        LocalTime checkInEnd = reservation.getEndTime();
+
+                        if (now.isBefore(checkInStart)) {
+                            long minutesLeft = java.time.Duration.between(now, reservation.getStartTime()).toMinutes();
+                            Snackbar.make(binding.getRoot(),
+                                    "체크인은 예약 시간 10분 전부터 가능합니다\n" +
+                                    "(예약 시간: " + reservation.getStartTime().format(DateTimeFormatter.ofPattern("HH:mm")) +
+                                    ", " + minutesLeft + "분 후 체크인 가능)",
+                                    Snackbar.LENGTH_LONG).show();
+                            return;
+                        }
+
+                        if (now.isAfter(checkInEnd)) {
+                            Snackbar.make(binding.getRoot(),
+                                    "예약 시간이 이미 종료되었습니다\n(종료 시간: " +
+                                    checkInEnd.format(DateTimeFormatter.ofPattern("HH:mm")) + ")",
+                                    Snackbar.LENGTH_LONG).show();
+                            return;
+                        }
+
+                        // 체크인 가능한 예약 발견
+                        matchingReservation = reservation;
+                        break;
                     }
 
                     if (matchingReservation == null) {
                         Snackbar.make(binding.getRoot(),
                                 roomName + "에 대한 활성 예약이 없습니다\n(현재 시간: " + now.format(DateTimeFormatter.ofPattern("HH:mm")) + ")",
-                                Snackbar.LENGTH_LONG).show();
-                        return;
-                    }
-
-                    // 체크인 가능 시간 확인 (예약 시작 10분 전부터 예약 종료 시간까지)
-                    LocalTime startTime = matchingReservation.getStartTime();
-                    long minutesBeforeStart = java.time.Duration.between(now, startTime).toMinutes();
-
-                    if (minutesBeforeStart > 10) {
-                        Snackbar.make(binding.getRoot(),
-                                "체크인은 예약 시간 10분 전부터 가능합니다\n(예약 시간: " + startTime.format(DateTimeFormatter.ofPattern("HH:mm")) + ")",
                                 Snackbar.LENGTH_LONG).show();
                         return;
                     }
