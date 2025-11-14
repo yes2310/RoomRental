@@ -4,6 +4,7 @@ import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.CalendarView;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -81,10 +82,13 @@ public class CalendarFragment extends Fragment {
         selectedDate = LocalDate.now();
         updateSelectedDateInfo();
 
-        binding.calendarView.setOnDateChangeListener((view, year, month, dayOfMonth) -> {
-            selectedDate = LocalDate.of(year, month + 1, dayOfMonth);
-            updateSelectedDateInfo();
-            showReservationsForDate(selectedDate);
+        binding.calendarView.setOnDateChangeListener(new CalendarView.OnDateChangeListener() {
+            @Override
+            public void onSelectedDayChange(@NonNull CalendarView view, int year, int month, int dayOfMonth) {
+                selectedDate = LocalDate.of(year, month + 1, dayOfMonth);
+                updateSelectedDateInfo();
+                showReservationsForDate(selectedDate);
+            }
         });
     }
 
@@ -96,7 +100,7 @@ public class CalendarFragment extends Fragment {
         String userId = authManager.currentUser().getUid();
         FirestoreManager firestoreManager = FirestoreManager.getInstance();
 
-        firestoreManager.getReservationsByUser(userId, new FirestoreManager.FirestoreCallback<List<Reservation>>() {
+        firestoreManager.getReservationsByUser(userId, new FirestoreManager.FirestoreCallback<>() {
             @Override
             public void onSuccess(List<Reservation> reservations) {
                 allReservations = reservations;
