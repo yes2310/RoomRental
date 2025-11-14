@@ -55,7 +55,7 @@ public class TimetableCSVParser {
     }
 
     /**
-     * CSV 필드에서 앞뒤 공백과 따옴표 제거
+     * CSV 필드에서 앞뒤 공백과 모든 따옴표 제거
      */
     private static String cleanField(String field) {
         if (field == null) {
@@ -63,15 +63,29 @@ public class TimetableCSVParser {
         }
         // 앞뒤 공백 제거
         field = field.trim();
-        // 앞뒤 큰따옴표 제거
-        if (field.startsWith("\"") && field.endsWith("\"") && field.length() >= 2) {
-            field = field.substring(1, field.length() - 1);
-        }
-        // 앞뒤 작은따옴표 제거
-        if (field.startsWith("'") && field.endsWith("'") && field.length() >= 2) {
-            field = field.substring(1, field.length() - 1);
-        }
+        // 모든 큰따옴표 제거
+        field = field.replace("\"", "");
+        // 모든 작은따옴표 제거
+        field = field.replace("'", "");
+        // 다시 trim
         return field.trim();
+    }
+
+    /**
+     * 시간 문자열을 정규화 (9:00 -> 09:00)
+     */
+    private static String normalizeTime(String timeStr) {
+        if (timeStr == null || timeStr.isEmpty()) {
+            return timeStr;
+        }
+        // HH:mm 형식이 아니면 변환
+        String[] parts = timeStr.split(":");
+        if (parts.length == 2) {
+            String hour = parts[0].length() == 1 ? "0" + parts[0] : parts[0];
+            String minute = parts[1].length() == 1 ? "0" + parts[1] : parts[1];
+            return hour + ":" + minute;
+        }
+        return timeStr;
     }
 
     private static TimetableEntry parseLine(String line) throws Exception {
@@ -95,7 +109,9 @@ public class TimetableCSVParser {
         // 요일 파싱
         DayOfWeek dayOfWeek = parseDayOfWeek(dayStr);
 
-        // 시간 파싱
+        // 시간 파싱 (정규화 후)
+        startTimeStr = normalizeTime(startTimeStr);
+        endTimeStr = normalizeTime(endTimeStr);
         LocalTime startTime = LocalTime.parse(startTimeStr);
         LocalTime endTime = LocalTime.parse(endTimeStr);
 
