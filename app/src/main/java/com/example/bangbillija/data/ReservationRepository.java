@@ -125,14 +125,29 @@ public class ReservationRepository {
 
                     List<Reservation> upcoming = allReservations.stream()
                             .filter(r -> !r.getDate().isBefore(today) && r.getStatus() != ReservationStatus.CANCELLED)
+                            .sorted((r1, r2) -> {
+                                int dateCompare = r2.getDate().compareTo(r1.getDate());
+                                if (dateCompare != 0) return dateCompare;
+                                return r2.getStartTime().compareTo(r1.getStartTime());
+                            })
                             .collect(Collectors.toList());
 
                     List<Reservation> past = allReservations.stream()
                             .filter(r -> r.getDate().isBefore(today) && r.getStatus() != ReservationStatus.CANCELLED)
+                            .sorted((r1, r2) -> {
+                                int dateCompare = r2.getDate().compareTo(r1.getDate());
+                                if (dateCompare != 0) return dateCompare;
+                                return r2.getStartTime().compareTo(r1.getStartTime());
+                            })
                             .collect(Collectors.toList());
 
                     List<Reservation> cancelled = allReservations.stream()
                             .filter(r -> r.getStatus() == ReservationStatus.CANCELLED)
+                            .sorted((r1, r2) -> {
+                                int dateCompare = r2.getDate().compareTo(r1.getDate());
+                                if (dateCompare != 0) return dateCompare;
+                                return r2.getStartTime().compareTo(r1.getStartTime());
+                            })
                             .collect(Collectors.toList());
 
                     upcomingReservations.setValue(upcoming);

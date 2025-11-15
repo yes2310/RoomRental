@@ -153,8 +153,6 @@ public class FirestoreManager {
     public void getReservationsByUser(String userId, FirestoreCallback<List<Reservation>> callback) {
         db.collection(COLLECTION_RESERVATIONS)
                 .whereEqualTo("userId", userId)
-                .orderBy("date", Query.Direction.DESCENDING)
-                .orderBy("startTime", Query.Direction.DESCENDING)
                 .get()
                 .addOnSuccessListener(querySnapshot -> {
                     List<Reservation> reservations = new ArrayList<>();
