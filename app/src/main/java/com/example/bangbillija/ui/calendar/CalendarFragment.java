@@ -4,7 +4,6 @@ import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.CalendarView;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -20,9 +19,7 @@ import com.example.bangbillija.service.FirestoreManager;
 import com.example.bangbillija.ui.Navigator;
 import com.example.bangbillija.ui.reservations.MyReservationsAdapter;
 
-import java.time.Instant;
 import java.time.LocalDate;
-import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
@@ -62,7 +59,7 @@ public class CalendarFragment extends Fragment {
         reservationAdapter = new MyReservationsAdapter(new MyReservationsAdapter.ReservationClickListener() {
             @Override
             public void onPrimaryAction(Reservation reservation) {
-                viewModel.selectReservation(reservation);
+                viewModel.focusReservation(reservation);
                 if (getActivity() instanceof Navigator) {
                     ((Navigator) getActivity()).openReservationDetail();
                 }
@@ -84,13 +81,10 @@ public class CalendarFragment extends Fragment {
         selectedDate = LocalDate.now();
         updateSelectedDateInfo();
 
-        binding.calendarView.setOnDateChangeListener(new CalendarView.OnDateChangeListener() {
-            @Override
-            public void onSelectedDayChange(@NonNull CalendarView view, int year, int month, int dayOfMonth) {
-                selectedDate = LocalDate.of(year, month + 1, dayOfMonth);
-                updateSelectedDateInfo();
-                showReservationsForDate(selectedDate);
-            }
+        binding.calendarView.setOnDateChangeListener((view, year, month, dayOfMonth) -> {
+            selectedDate = LocalDate.of(year, month + 1, dayOfMonth);
+            updateSelectedDateInfo();
+            showReservationsForDate(selectedDate);
         });
     }
 
