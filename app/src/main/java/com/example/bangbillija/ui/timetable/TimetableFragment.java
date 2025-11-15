@@ -25,6 +25,7 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.bangbillija.R;
 import com.example.bangbillija.model.Room;
+import com.example.bangbillija.model.RoomStatus;
 import com.example.bangbillija.model.TimetableEntry;
 import com.example.bangbillija.data.RoomRepository;
 import com.example.bangbillija.data.TimetableRepository;
@@ -226,7 +227,10 @@ public class TimetableFragment extends Fragment {
             InputStream inputStream = requireContext().getContentResolver().openInputStream(uri);
             List<TimetableEntry> entries = TimetableCSVParser.parseCSV(inputStream);
 
-            // Firestore에 저장
+            // 1단계: CSV에서 강의실 정보 추출 및 자동 등록
+            autoRegisterRoomsFromTimetable(entries);
+
+            // 2단계: Firestore에 시간표 저장
             timetableRepository.addEntries(entries, new FirestoreManager.FirestoreCallback<Void>() {
                 @Override
                 public void onSuccess(Void result) {
@@ -252,6 +256,104 @@ public class TimetableFragment extends Fragment {
                     "파일 읽기 실패: " + e.getMessage(),
                     Toast.LENGTH_SHORT).show();
         }
+    }
+
+    /**
+     * 시간표 엔트리에서 강의실 정보를 추출하여 자동으로 등록
+     */
+    private void autoRegisterRoomsFromTimetable(List<TimetableEntry> entries) {
+        // 중복 제거를 위한 Map (roomId -> TimetableEntry)
+        java.util.Map<String, TimetableEntry> uniqueRooms = new java.util.HashMap<>();
+
+        for (TimetableEntry entry : entries) {
+            if (!uniqueRooms.containsKey(entry.getRoomId())) {
+                uniqueRooms.put(entry.getRoomId(), entry);
+            }
+        }
+
+        // 각 강의실을 확인하고 없으면 등록
+        for (TimetableEntry entry : uniqueRooms.values()) {
+            checkAndRegisterRoom(entry);
+        }
+    }
+
+    /**
+     * 강의실이 존재하는지 확인하고 없으면 등록
+     */
+    private void checkAndRegisterRoom(TimetableEntry entry) {
+        String roomId = entry.getRoomId();
+        String roomName = entry.getRoomName();
+        int capacity = entry.getAttendees(); // 수강인원을 수용인원으로 사용
+
+        // Firestore에서 해당 강의실이 존재하는지 확인
+        FirestoreManager.getInstance().getRoom(roomId, new FirestoreManager.FirestoreCallback<Room>() {
+            @Override
+            public void onSuccess(Room existingRoom) {
+                // 이미 존재하면 아무것도 하지 않음
+                android.util.Log.d("TimetableFragment", "Room already exists: " + roomId);
+            }
+
+            @Override
+            public void onFailure(Exception e) {
+                // 존재하지 않으면 새로 생성
+                android.util.Log.d("TimetableFragment", "Creating new room: " + roomId);
+
+                // 강의실명에서 건물명 추출 (예: "공학관 301호" -> "공학관")
+                String building = extractBuilding(roomName);
+
+                // 새 강의실 생성
+                Room newRoom = new Room(
+                    roomId,
+                    building,
+                    roomName,
+                    capacity,
+                    "N/A", // 층 정보는 없으므로 기본값
+                    new ArrayList<>(), // 시설 정보는 없으므로 빈 리스트
+                    RoomStatus.AVAILABLE
+                );
+
+                // RoomRepository를 통해 저장
+                roomRepository.addRoom(newRoom, new FirestoreManager.FirestoreCallback<Void>() {
+                    @Override
+                    public void onSuccess(Void result) {
+                        android.util.Log.d("TimetableFragment", "Room created successfully: " + roomId);
+                    }
+
+                    @Override
+                    public void onFailure(Exception e) {
+                        android.util.Log.e("TimetableFragment", "Failed to create room: " + roomId, e);
+                    }
+                });
+            }
+        });
+    }
+
+    /**
+     * 강의실명에서 건물명 추출
+     * 예: "공학관 301호" -> "공학관"
+     */
+    private String extractBuilding(String roomName) {
+        if (roomName == null || roomName.isEmpty()) {
+            return "미지정";
+        }
+
+        // 공백 또는 숫자 앞까지를 건물명으로 간주
+        int spaceIndex = roomName.indexOf(' ');
+        if (spaceIndex > 0) {
+            return roomName.substring(0, spaceIndex);
+        }
+
+        // 숫자가 나오는 위치 찾기
+        for (int i = 0; i < roomName.length(); i++) {
+            if (Character.isDigit(roomName.charAt(i))) {
+                if (i > 0) {
+                    return roomName.substring(0, i).trim();
+                }
+                break;
+            }
+        }
+
+        return roomName; // 파싱 실패 시 전체 이름 반환
     }
 
     private void showRoomPicker() {

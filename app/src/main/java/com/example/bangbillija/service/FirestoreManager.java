@@ -76,6 +76,25 @@ public class FirestoreManager {
                 .addOnFailureListener(callback::onFailure);
     }
 
+    public void getRoom(String roomId, FirestoreCallback<Room> callback) {
+        db.collection(COLLECTION_ROOMS)
+                .document(roomId)
+                .get()
+                .addOnSuccessListener(documentSnapshot -> {
+                    if (documentSnapshot.exists()) {
+                        Room room = documentToRoom(documentSnapshot);
+                        if (room != null) {
+                            callback.onSuccess(room);
+                        } else {
+                            callback.onFailure(new Exception("Failed to parse room document"));
+                        }
+                    } else {
+                        callback.onFailure(new Exception("Room not found: " + roomId));
+                    }
+                })
+                .addOnFailureListener(callback::onFailure);
+    }
+
     // ==================== Reservation Operations ====================
 
     public void createReservation(Reservation reservation, String userId, String userEmail, FirestoreCallback<String> callback) {
