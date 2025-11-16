@@ -39,11 +39,12 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text=""
-            android:textAppearance="?attr/textAppearanceBodySmall"
-            android:textColor="?attr/colorPrimary"
-            android:background="@android:drawable/dialog_holo_light_frame"
+            android:textAppearance="?attr/textAppearanceLabelLarge"
+            android:textColor="?attr/colorOnPrimaryContainer"
+            android:background="@drawable/bg_count_badge"
             android:paddingHorizontal="12dp"
-            android:paddingVertical="4dp"
+            android:paddingVertical="6dp"
+            android:textStyle="bold"
             android:visibility="gone"/>
     </LinearLayout>
 
