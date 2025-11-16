@@ -147,6 +147,13 @@ public class CalendarFragment extends Fragment {
     }
 
     @Override
+    public void onResume() {
+        super.onResume();
+        // 화면이 다시 보일 때 예약 목록 새로고침
+        loadReservations();
+    }
+
+    @Override
     public void onDestroyView() {
         super.onDestroyView();
         binding = null;

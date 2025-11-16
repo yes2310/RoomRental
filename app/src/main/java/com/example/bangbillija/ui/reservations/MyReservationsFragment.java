@@ -76,6 +76,13 @@ public class MyReservationsFragment extends Fragment implements MyReservationsAd
         });
     }
 
+    @Override
+    public void onResume() {
+        super.onResume();
+        // 화면이 다시 보일 때 데이터 새로고침
+        com.example.bangbillija.data.ReservationRepository.getInstance().refresh();
+    }
+
     private void setupProfileSection() {
         FirebaseUser user = authManager.currentUser();
         if (user != null) {
