@@ -127,15 +127,38 @@ public class CreateReservationFragment extends Fragment {
             return;
         }
 
-        String[] timeStrings = TIME_SLOTS.stream()
+        List<LocalTime> validStartTimes = TIME_SLOTS.stream()
                 .filter(time -> time.isBefore(LocalTime.of(21, 0))) // 마지막 시작 시간은 20:30
-                .map(time -> time.format(timeFormatter))
+                .collect(java.util.stream.Collectors.toList());
+
+        String[] timeStrings = validStartTimes.stream()
+                .map(time -> {
+                    // 해당 시간이 예약 가능한지 확인
+                    boolean isBlocked = isTimeBlocked(time);
+                    String timeStr = time.format(timeFormatter);
+
+                    if (isBlocked) {
+                        // 예약 불가능한 시간에 표시 추가
+                        return timeStr + " (예약불가)";
+                    }
+                    return timeStr;
+                })
                 .toArray(String[]::new);
 
         new MaterialAlertDialogBuilder(requireContext())
                 .setTitle("시작 시간 선택")
                 .setItems(timeStrings, (dialog, which) -> {
-                    selectedStartTime = TIME_SLOTS.get(which);
+                    LocalTime selectedTime = validStartTimes.get(which);
+
+                    // 예약 불가능한 시간 선택 시 경고
+                    if (isTimeBlocked(selectedTime)) {
+                        Snackbar.make(binding.getRoot(),
+                                "해당 시간은 이미 예약되어 있거나 수업이 있습니다",
+                                Snackbar.LENGTH_LONG).show();
+                        return;
+                    }
+
+                    selectedStartTime = selectedTime;
                     selectedEndTime = null; // 종료 시간 초기화
 
                     binding.buttonSelectStartTime.setText("시작: " + selectedStartTime.format(timeFormatter));
@@ -145,6 +168,44 @@ public class CreateReservationFragment extends Fragment {
                 })
                 .setNegativeButton("취소", null)
                 .show();
+    }
+
+    /**
+     * 특정 시작 시간이 차단되어 있는지 확인
+     */
+    private boolean isTimeBlocked(LocalTime startTime) {
+        if (selectedDate == null || selectedRoom == null) {
+            return false;
+        }
+
+        // 최소 1시간 예약이므로 종료 시간 계산
+        LocalTime endTime = startTime.plusHours(1);
+
+        // 기존 예약과 충돌 확인
+        for (Reservation reservation : existingReservations) {
+            if (timesOverlap(startTime, endTime, reservation.getStartTime(), reservation.getEndTime())) {
+                return true;
+            }
+        }
+
+        // 시간표와 충돌 확인
+        java.time.DayOfWeek dayOfWeek = selectedDate.getDayOfWeek();
+        for (com.example.bangbillija.model.TimetableEntry entry : existingTimetable) {
+            if (entry.getDayOfWeek() == dayOfWeek) {
+                if (timesOverlap(startTime, endTime, entry.getStartTime(), entry.getEndTime())) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * 두 시간 범위가 겹치는지 확인
+     */
+    private boolean timesOverlap(LocalTime start1, LocalTime end1, LocalTime start2, LocalTime end2) {
+        return start1.isBefore(end2) && end1.isAfter(start2);
     }
 
     private void showEndTimePicker() {
@@ -167,28 +228,65 @@ public class CreateReservationFragment extends Fragment {
         }
 
         String[] timeStrings = availableEndTimes.stream()
-                .map(time -> time.format(timeFormatter))
+                .map(time -> {
+                    // 해당 종료 시간이 예약 가능한지 확인
+                    boolean isBlocked = isEndTimeBlocked(time);
+                    String timeStr = time.format(timeFormatter);
+
+                    if (isBlocked) {
+                        return timeStr + " (예약불가)";
+                    }
+                    return timeStr;
+                })
                 .toArray(String[]::new);
 
         new MaterialAlertDialogBuilder(requireContext())
                 .setTitle("종료 시간 선택")
                 .setItems(timeStrings, (dialog, which) -> {
-                    selectedEndTime = availableEndTimes.get(which);
+                    LocalTime selectedTime = availableEndTimes.get(which);
+
+                    // 예약 불가능한 시간 선택 시 경고
+                    if (isEndTimeBlocked(selectedTime)) {
+                        Snackbar.make(binding.getRoot(),
+                                "선택한 시간에 이미 예약이 있거나 수업이 있습니다. 다른 시간을 선택하세요",
+                                Snackbar.LENGTH_LONG).show();
+                        return;
+                    }
+
+                    selectedEndTime = selectedTime;
                     binding.buttonSelectEndTime.setText("종료: " + selectedEndTime.format(timeFormatter));
                     updateSelectedTimeDisplay();
-
-                    // 시간 충돌 검사
-                    if (hasTimeConflict()) {
-                        Snackbar.make(binding.getRoot(),
-                                "선택한 시간에 이미 예약이 있습니다. 다른 시간을 선택하세요",
-                                Snackbar.LENGTH_LONG).show();
-                        selectedEndTime = null;
-                        binding.buttonSelectEndTime.setText("종료 시간");
-                        updateSelectedTimeDisplay();
-                    }
                 })
                 .setNegativeButton("취소", null)
                 .show();
+    }
+
+    /**
+     * 선택한 시작 시간부터 종료 시간까지 예약 가능한지 확인
+     */
+    private boolean isEndTimeBlocked(LocalTime endTime) {
+        if (selectedDate == null || selectedRoom == null || selectedStartTime == null) {
+            return false;
+        }
+
+        // 기존 예약과 충돌 확인
+        for (Reservation reservation : existingReservations) {
+            if (timesOverlap(selectedStartTime, endTime, reservation.getStartTime(), reservation.getEndTime())) {
+                return true;
+            }
+        }
+
+        // 시간표와 충돌 확인
+        java.time.DayOfWeek dayOfWeek = selectedDate.getDayOfWeek();
+        for (com.example.bangbillija.model.TimetableEntry entry : existingTimetable) {
+            if (entry.getDayOfWeek() == dayOfWeek) {
+                if (timesOverlap(selectedStartTime, endTime, entry.getStartTime(), entry.getEndTime())) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 
     private void resetTimeSelection() {
