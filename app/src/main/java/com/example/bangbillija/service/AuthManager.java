@@ -3,28 +3,77 @@ package com.example.bangbillija.service;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.auth.UserProfileChangeRequest;
+import com.google.firebase.firestore.FirebaseFirestore;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 public class AuthManager {
 
     private static AuthManager instance;
     private final FirebaseAuth auth = FirebaseAuth.getInstance();
+    private final FirebaseFirestore db = FirebaseFirestore.getInstance();
 
-    // 관리자 이메일 목록 (하드코딩)
-    private static final List<String> ADMIN_EMAILS = Arrays.asList(
+    // Fallback 관리자 이메일 목록 (Firestore 로드 실패 시 사용)
+    private static final List<String> FALLBACK_ADMIN_EMAILS = Arrays.asList(
             "admin@bangbillija.com",
             "admin@example.com",
-            "admin@admin.com",
             "yes2310@naver.com"
     );
+
+    // 캐시된 관리자 이메일 목록
+    private final Set<String> adminEmails = new HashSet<>(FALLBACK_ADMIN_EMAILS);
+    private boolean adminListLoaded = false;
+
+    private AuthManager() {
+        loadAdminList();
+    }
 
     public static synchronized AuthManager getInstance() {
         if (instance == null) {
             instance = new AuthManager();
         }
         return instance;
+    }
+
+    /**
+     * Firestore에서 관리자 목록을 로드합니다.
+     * 'admins' 컬렉션의 모든 문서 ID를 관리자 이메일로 사용합니다.
+     */
+    private void loadAdminList() {
+        db.collection("admins")
+                .get()
+                .addOnSuccessListener(querySnapshot -> {
+                    Set<String> newAdminEmails = new HashSet<>();
+                    querySnapshot.getDocuments().forEach(doc -> {
+                        String email = doc.getId(); // 문서 ID가 이메일
+                        if (email != null && !email.isEmpty()) {
+                            newAdminEmails.add(email.toLowerCase());
+                        }
+                    });
+
+                    if (!newAdminEmails.isEmpty()) {
+                        adminEmails.clear();
+                        adminEmails.addAll(newAdminEmails);
+                    }
+                    adminListLoaded = true;
+                    android.util.Log.d("AuthManager", "Admin list loaded: " + adminEmails.size() + " admins");
+                })
+                .addOnFailureListener(e -> {
+                    android.util.Log.e("AuthManager", "Failed to load admin list, using fallback", e);
+                    // fallback 목록 사용 (이미 초기화됨)
+                    adminListLoaded = true;
+                });
+    }
+
+    /**
+     * 관리자 목록을 새로고침합니다.
+     */
+    public void refreshAdminList() {
+        loadAdminList();
     }
 
     public FirebaseUser currentUser() {
@@ -82,7 +131,7 @@ public class AuthManager {
         if (user == null || user.getEmail() == null) {
             return false;
         }
-        return ADMIN_EMAILS.contains(user.getEmail().toLowerCase());
+        return adminEmails.contains(user.getEmail().toLowerCase());
     }
 
     public interface Completion {

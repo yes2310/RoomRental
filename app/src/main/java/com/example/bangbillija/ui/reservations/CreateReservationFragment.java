@@ -44,6 +44,7 @@ public class CreateReservationFragment extends Fragment {
     private LocalTime selectedStartTime;
     private LocalTime selectedEndTime;
     private List<Reservation> existingReservations = new ArrayList<>();
+    private List<com.example.bangbillija.model.TimetableEntry> existingTimetable = new ArrayList<>();
 
     private final DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("yyyy년 M월 d일 (E)");
     private final DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("HH:mm");
@@ -219,6 +220,7 @@ public class CreateReservationFragment extends Fragment {
             return;
         }
 
+        // 예약 로드
         reservationRepository.getReservationsByRoomAndDate(
                 selectedRoom.getId(),
                 selectedDate,
@@ -239,6 +241,25 @@ public class CreateReservationFragment extends Fragment {
                         existingReservations.clear();
                     }
                 });
+
+        // 시간표 로드 (수업 시간과 충돌 방지)
+        FirestoreManager.getInstance()
+                .getTimetableEntriesForRoomAndDay(
+                        selectedRoom.getId(),
+                        selectedDate.getDayOfWeek(),
+                        new FirestoreManager.FirestoreCallback<List<com.example.bangbillija.model.TimetableEntry>>() {
+                            @Override
+                            public void onSuccess(List<com.example.bangbillija.model.TimetableEntry> timetable) {
+                                existingTimetable = timetable;
+                                android.util.Log.d("CreateReservation", "Loaded " + existingTimetable.size() + " timetable entries");
+                            }
+
+                            @Override
+                            public void onFailure(Exception e) {
+                                android.util.Log.e("CreateReservation", "Failed to load timetable", e);
+                                existingTimetable.clear();
+                            }
+                        });
     }
 
     private boolean hasTimeConflict() {
@@ -246,6 +267,7 @@ public class CreateReservationFragment extends Fragment {
             return false;
         }
 
+        // 기존 예약과의 충돌 검사
         for (Reservation reservation : existingReservations) {
             // 겹치는지 확인: 새 예약의 시작이 기존 예약 끝 전이고, 새 예약의 끝이 기존 예약 시작 후
             boolean overlaps = selectedStartTime.isBefore(reservation.getEndTime()) &&
@@ -254,6 +276,19 @@ public class CreateReservationFragment extends Fragment {
             if (overlaps) {
                 android.util.Log.d("CreateReservation", "Time conflict with reservation: " +
                         reservation.getStartTime() + " - " + reservation.getEndTime());
+                return true;
+            }
+        }
+
+        // 시간표(수업 시간)와의 충돌 검사
+        for (com.example.bangbillija.model.TimetableEntry timetableEntry : existingTimetable) {
+            boolean overlaps = selectedStartTime.isBefore(timetableEntry.getEndTime()) &&
+                              selectedEndTime.isAfter(timetableEntry.getStartTime());
+
+            if (overlaps) {
+                android.util.Log.d("CreateReservation", "Time conflict with class: " +
+                        timetableEntry.getCourseName() + " (" +
+                        timetableEntry.getStartTime() + " - " + timetableEntry.getEndTime() + ")");
                 return true;
             }
         }

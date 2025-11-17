@@ -16,17 +16,6 @@ public final class SlotEngine {
 
     private static final LocalTime DAY_START = LocalTime.of(9, 0);
     private static final LocalTime DAY_END = LocalTime.of(21, 0);
-    private static final int SLOT_DURATION_HOURS = 2;
-
-    // Fixed 2-hour time slots
-    private static final List<TimeSlotTemplate> FIXED_SLOTS = List.of(
-            new TimeSlotTemplate(LocalTime.of(9, 0), LocalTime.of(11, 0)),
-            new TimeSlotTemplate(LocalTime.of(11, 0), LocalTime.of(13, 0)),
-            new TimeSlotTemplate(LocalTime.of(13, 0), LocalTime.of(15, 0)),
-            new TimeSlotTemplate(LocalTime.of(15, 0), LocalTime.of(17, 0)),
-            new TimeSlotTemplate(LocalTime.of(17, 0), LocalTime.of(19, 0)),
-            new TimeSlotTemplate(LocalTime.of(19, 0), LocalTime.of(21, 0))
-    );
 
     private SlotEngine() {
     }
@@ -35,6 +24,10 @@ public final class SlotEngine {
         return calculateDailySlots(date, reservations, new ArrayList<>());
     }
 
+    /**
+     * 실제 예약과 수업 시간을 기반으로 TimeSlot 목록을 생성합니다.
+     * 30분 단위 예약을 지원하며, 빈 시간은 자동으로 "예약 가능" 슬롯으로 채워집니다.
+     */
     public static List<TimeSlot> calculateDailySlots(LocalDate date, List<Reservation> reservations, List<TimetableEntry> allTimetableEntries) {
         List<TimeSlot> slots = new ArrayList<>();
 
@@ -46,7 +39,7 @@ public final class SlotEngine {
                 .filter(entry -> entry.getDayOfWeek() == dayOfWeek)
                 .collect(Collectors.toList());
 
-        // 예약과 시간표를 합쳐서 "사용 중인 시간"으로 처리
+        // 예약과 시간표를 합쳐서 "사용 중인 시간 블록"으로 처리
         List<TimeBlock> blockedTimes = new ArrayList<>();
 
         // 예약 추가
@@ -67,42 +60,31 @@ public final class SlotEngine {
             ));
         }
 
-        // 고정된 2시간 슬롯에 대해 확인
-        for (TimeSlotTemplate template : FIXED_SLOTS) {
-            // 해당 슬롯과 겹치는 블록 찾기
-            TimeBlock overlappingBlock = findOverlappingBlock(template, blockedTimes);
+        // 시간 순으로 정렬
+        blockedTimes.sort(Comparator.comparing(TimeBlock::getStart));
 
-            if (overlappingBlock != null) {
-                // 겹치는 예약/수업이 있으면 해당 슬롯 추가
-                slots.add(overlappingBlock.getSlot());
-            } else {
-                // 비어있으면 예약 가능 슬롯 추가
-                slots.add(TimeSlot.available(date, template.start, template.end));
+        // 빈 시간을 찾아서 "예약 가능" 슬롯으로 채우기
+        LocalTime currentTime = DAY_START;
+
+        for (TimeBlock block : blockedTimes) {
+            // 현재 시간과 블록 시작 사이에 빈 시간이 있으면 예약 가능 슬롯 추가
+            if (currentTime.isBefore(block.getStart())) {
+                slots.add(TimeSlot.available(date, currentTime, block.getStart()));
             }
+
+            // 블록된 시간 추가 (예약 또는 수업)
+            slots.add(block.getSlot());
+
+            // 현재 시간을 블록 끝으로 이동
+            currentTime = block.getEnd().isAfter(currentTime) ? block.getEnd() : currentTime;
+        }
+
+        // 마지막 블록 이후부터 운영 종료 시간까지 빈 시간이 있으면 추가
+        if (currentTime.isBefore(DAY_END)) {
+            slots.add(TimeSlot.available(date, currentTime, DAY_END));
         }
 
         return slots;
-    }
-
-    private static TimeBlock findOverlappingBlock(TimeSlotTemplate template, List<TimeBlock> blockedTimes) {
-        for (TimeBlock block : blockedTimes) {
-            // 겹치는지 확인: 블록의 시작이 슬롯 끝 전이고, 블록의 끝이 슬롯 시작 후
-            if (block.getStart().isBefore(template.end) && block.getEnd().isAfter(template.start)) {
-                return block;
-            }
-        }
-        return null;
-    }
-
-    // 내부 헬퍼 클래스: 고정 시간 슬롯 템플릿
-    private static class TimeSlotTemplate {
-        private final LocalTime start;
-        private final LocalTime end;
-
-        TimeSlotTemplate(LocalTime start, LocalTime end) {
-            this.start = start;
-            this.end = end;
-        }
     }
 
     // 내부 헬퍼 클래스: 시간 블록 (예약 또는 시간표)
