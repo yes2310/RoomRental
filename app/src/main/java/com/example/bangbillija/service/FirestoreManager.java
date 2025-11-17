@@ -167,6 +167,27 @@ public class FirestoreManager {
                 .addOnFailureListener(callback::onFailure);
     }
 
+    public void getReservationsByRoomAndDate(String roomId, LocalDate date, FirestoreCallback<List<Reservation>> callback) {
+        // Convert LocalDate to Timestamp for Firestore query
+        Timestamp dateTimestamp = localDateToTimestamp(date);
+
+        db.collection(COLLECTION_RESERVATIONS)
+                .whereEqualTo("roomId", roomId)
+                .whereEqualTo("date", dateTimestamp)
+                .get()
+                .addOnSuccessListener(querySnapshot -> {
+                    List<Reservation> reservations = new ArrayList<>();
+                    for (DocumentSnapshot doc : querySnapshot.getDocuments()) {
+                        Reservation reservation = documentToReservation(doc);
+                        if (reservation != null) {
+                            reservations.add(reservation);
+                        }
+                    }
+                    callback.onSuccess(reservations);
+                })
+                .addOnFailureListener(callback::onFailure);
+    }
+
     public void getReservationsByStatus(String userId, ReservationStatus status, FirestoreCallback<List<Reservation>> callback) {
         db.collection(COLLECTION_RESERVATIONS)
                 .whereEqualTo("userId", userId)

@@ -86,6 +86,10 @@ public class ReservationRepository {
         }
     }
 
+    public void getReservationsByRoomAndDate(String roomId, LocalDate date, FirestoreManager.FirestoreCallback<List<Reservation>> callback) {
+        firestoreManager.getReservationsByRoomAndDate(roomId, date, callback);
+    }
+
     public LiveData<List<Reservation>> getUpcomingReservations() {
         return upcomingReservations;
     }
