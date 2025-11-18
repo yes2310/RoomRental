@@ -14,7 +14,6 @@ public class RoomRepository {
     private final FirestoreManager firestoreManager = FirestoreManager.getInstance();
     private final MutableLiveData<List<Room>> rooms = new MutableLiveData<>();
     private final MutableLiveData<String> error = new MutableLiveData<>();
-    private boolean useFakeData = false; // Firebase Firestore 사용
 
     private RoomRepository() {
         loadRooms();
@@ -35,31 +34,20 @@ public class RoomRepository {
         return error;
     }
 
-    public void setUseFakeData(boolean useFake) {
-        this.useFakeData = useFake;
-        loadRooms();
-    }
-
     public void loadRooms() {
-        if (useFakeData) {
-            // 개발/테스트 모드: FakeDataSource 사용
-            rooms.setValue(FakeDataSource.getRooms());
-        } else {
-            // 프로덕션 모드: Firestore 사용
-            firestoreManager.getAllRooms(new FirestoreManager.FirestoreCallback<List<Room>>() {
-                @Override
-                public void onSuccess(List<Room> result) {
-                    rooms.setValue(result);
-                }
+        firestoreManager.getAllRooms(new FirestoreManager.FirestoreCallback<List<Room>>() {
+            @Override
+            public void onSuccess(List<Room> result) {
+                rooms.setValue(result);
+            }
 
-                @Override
-                public void onFailure(Exception e) {
-                    error.setValue(e.getMessage());
-                    // Fallback to fake data on error
-                    rooms.setValue(FakeDataSource.getRooms());
-                }
-            });
-        }
+            @Override
+            public void onFailure(Exception e) {
+                error.setValue(e.getMessage());
+                // Fallback to fake data on error
+                rooms.setValue(FakeDataSource.getRooms());
+            }
+        });
     }
 
     public void refresh() {

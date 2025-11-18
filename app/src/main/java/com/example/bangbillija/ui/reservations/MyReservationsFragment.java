@@ -98,11 +98,13 @@ public class MyReservationsFragment extends Fragment implements MyReservationsAd
             // 이메일 설정
             binding.textUserEmail.setText(user.getEmail());
 
-            // 관리자 배지 표시
+            // 관리자 배지 및 전체 예약 보기 모드 표시
             if (authManager.isAdmin()) {
                 binding.textAdminBadge.setVisibility(View.VISIBLE);
+                binding.textAdminViewMode.setVisibility(View.VISIBLE);
             } else {
                 binding.textAdminBadge.setVisibility(View.GONE);
+                binding.textAdminViewMode.setVisibility(View.GONE);
             }
         }
     }
@@ -189,63 +191,27 @@ public class MyReservationsFragment extends Fragment implements MyReservationsAd
     }
 
     private void showCancelConfirmDialog(Reservation reservation) {
-        new AlertDialog.Builder(requireContext())
-                .setTitle("예약 취소")
-                .setMessage("'" + reservation.getTitle() + "' 예약을 취소하시겠습니까?\n\n" +
-                        "날짜: " + reservation.getDate() + "\n" +
-                        "시간: " + reservation.getStartTime() + " - " + reservation.getEndTime())
-                .setPositiveButton("취소하기", (dialog, which) -> {
-                    com.example.bangbillija.data.ReservationRepository.getInstance()
-                            .cancelReservationByReservationId(reservation.getId(),
-                                    new com.example.bangbillija.service.FirestoreManager.FirestoreCallback<Void>() {
-                                        @Override
-                                        public void onSuccess(Void result) {
-                                            if (binding != null) {
-                                                Snackbar.make(binding.getRoot(), "예약이 취소되었습니다", Snackbar.LENGTH_SHORT).show();
-                                            }
-                                            com.example.bangbillija.data.ReservationRepository.getInstance().refresh();
-                                        }
-
-                                        @Override
-                                        public void onFailure(Exception e) {
-                                            if (binding != null) {
-                                                Snackbar.make(binding.getRoot(), "취소 실패: " + e.getMessage(), Snackbar.LENGTH_LONG).show();
-                                            }
-                                        }
-                                    });
-                })
-                .setNegativeButton("돌아가기", null)
-                .show();
+        if (binding == null) {
+            return;
+        }
+        ReservationDialogHelper.showCancelConfirmDialog(
+                requireContext(),
+                reservation,
+                binding.getRoot(),
+                () -> com.example.bangbillija.data.ReservationRepository.getInstance().refresh()
+        );
     }
 
     private void showDeleteConfirmDialog(Reservation reservation) {
-        new AlertDialog.Builder(requireContext())
-                .setTitle("예약 삭제")
-                .setMessage("'" + reservation.getTitle() + "' 예약 기록을 완전히 삭제하시겠습니까?\n\n" +
-                        "이 작업은 되돌릴 수 없습니다.")
-                .setPositiveButton("삭제", (dialog, which) -> {
-                    // Firestore에서 예약 문서 자체를 삭제
-                    com.example.bangbillija.service.FirestoreManager.getInstance()
-                            .deleteReservation(reservation.getId(),
-                                    new com.example.bangbillija.service.FirestoreManager.FirestoreCallback<Void>() {
-                                        @Override
-                                        public void onSuccess(Void result) {
-                                            if (binding != null) {
-                                                Snackbar.make(binding.getRoot(), "예약이 삭제되었습니다", Snackbar.LENGTH_SHORT).show();
-                                            }
-                                            com.example.bangbillija.data.ReservationRepository.getInstance().refresh();
-                                        }
-
-                                        @Override
-                                        public void onFailure(Exception e) {
-                                            if (binding != null) {
-                                                Snackbar.make(binding.getRoot(), "삭제 실패: " + e.getMessage(), Snackbar.LENGTH_LONG).show();
-                                            }
-                                        }
-                                    });
-                })
-                .setNegativeButton("취소", null)
-                .show();
+        if (binding == null) {
+            return;
+        }
+        ReservationDialogHelper.showDeleteConfirmDialog(
+                requireContext(),
+                reservation,
+                binding.getRoot(),
+                () -> com.example.bangbillija.data.ReservationRepository.getInstance().refresh()
+        );
     }
 
     @Override

@@ -29,7 +29,6 @@ public class ReservationRepository {
     private final MutableLiveData<List<Reservation>> pastReservations = new MutableLiveData<>();
     private final MutableLiveData<List<Reservation>> cancelledReservations = new MutableLiveData<>();
     private final MutableLiveData<String> error = new MutableLiveData<>();
-    private boolean useFakeData = false; // Firebase Firestore 사용
 
     private ReservationRepository() {
         loadReservations();
@@ -42,48 +41,34 @@ public class ReservationRepository {
         return instance;
     }
 
-    public void setUseFakeData(boolean useFake) {
-        this.useFakeData = useFake;
-        loadReservations();
-    }
-
     public void buildSlotsFor(String roomId, LocalDate date, FirestoreManager.FirestoreCallback<List<TimeSlot>> callback) {
-        if (useFakeData) {
-            // Fake data mode
-            List<Reservation> reservations = FakeDataSource.getReservationsForRoom(roomId)
-                    .stream()
-                    .filter(reservation -> reservation.getDate().equals(date))
-                    .collect(Collectors.toList());
-            callback.onSuccess(SlotEngine.calculateDailySlots(date, reservations));
-        } else {
-            // Firestore mode: 예약 + 시간표 모두 가져오기
-            firestoreManager.getReservationsForRoom(roomId, date, new FirestoreManager.FirestoreCallback<List<Reservation>>() {
-                @Override
-                public void onSuccess(List<Reservation> reservations) {
-                    // 시간표도 함께 가져오기
-                    firestoreManager.getTimetableEntriesForRoom(roomId, new FirestoreManager.FirestoreCallback<List<TimetableEntry>>() {
-                        @Override
-                        public void onSuccess(List<TimetableEntry> timetableEntries) {
-                            // 예약 + 시간표를 고려하여 슬롯 계산
-                            callback.onSuccess(SlotEngine.calculateDailySlots(date, reservations, timetableEntries));
-                        }
+        // 예약 + 시간표 모두 가져오기
+        firestoreManager.getReservationsForRoom(roomId, date, new FirestoreManager.FirestoreCallback<List<Reservation>>() {
+            @Override
+            public void onSuccess(List<Reservation> reservations) {
+                // 시간표도 함께 가져오기
+                firestoreManager.getTimetableEntriesForRoom(roomId, new FirestoreManager.FirestoreCallback<List<TimetableEntry>>() {
+                    @Override
+                    public void onSuccess(List<TimetableEntry> timetableEntries) {
+                        // 예약 + 시간표를 고려하여 슬롯 계산
+                        callback.onSuccess(SlotEngine.calculateDailySlots(date, reservations, timetableEntries));
+                    }
 
-                        @Override
-                        public void onFailure(Exception e) {
-                            // 시간표 로드 실패 시 예약만으로 계산
-                            error.setValue("시간표 로드 실패: " + e.getMessage());
-                            callback.onSuccess(SlotEngine.calculateDailySlots(date, reservations));
-                        }
-                    });
-                }
+                    @Override
+                    public void onFailure(Exception e) {
+                        // 시간표 로드 실패 시 예약만으로 계산
+                        error.setValue("시간표 로드 실패: " + e.getMessage());
+                        callback.onSuccess(SlotEngine.calculateDailySlots(date, reservations));
+                    }
+                });
+            }
 
-                @Override
-                public void onFailure(Exception e) {
-                    error.setValue(e.getMessage());
-                    callback.onFailure(e);
-                }
-            });
-        }
+            @Override
+            public void onFailure(Exception e) {
+                error.setValue(e.getMessage());
+                callback.onFailure(e);
+            }
+        });
     }
 
     public void getReservationsByRoomAndDate(String roomId, LocalDate date, FirestoreManager.FirestoreCallback<List<Reservation>> callback) {
@@ -107,64 +92,89 @@ public class ReservationRepository {
     }
 
     public void loadReservations() {
-        if (useFakeData) {
-            // Fake data mode
-            upcomingReservations.setValue(FakeDataSource.getReservationsAfter(LocalDate.now()));
-            pastReservations.setValue(FakeDataSource.getReservationsBefore(LocalDate.now()));
-            cancelledReservations.setValue(FakeDataSource.getReservationsByStatus(ReservationStatus.CANCELLED));
+        FirebaseUser user = authManager.currentUser();
+        if (user == null) {
+            return;
+        }
+
+        // 관리자인 경우 모든 예약 로드, 일반 사용자는 자신의 예약만 로드
+        if (authManager.isAdmin()) {
+            loadAllReservations();
         } else {
-            // Firestore mode
-            FirebaseUser user = authManager.currentUser();
-            if (user == null) {
-                return;
+            loadUserReservations(user.getUid());
+        }
+    }
+
+    /**
+     * 관리자용: 모든 사용자의 예약을 로드합니다.
+     */
+    private void loadAllReservations() {
+        firestoreManager.getAllReservations(new FirestoreManager.FirestoreCallback<List<Reservation>>() {
+            @Override
+            public void onSuccess(List<Reservation> allReservations) {
+                processAndSetReservations(allReservations);
             }
 
-            String userId = user.getUid();
+            @Override
+            public void onFailure(Exception e) {
+                error.setValue(e.getMessage());
+            }
+        });
+    }
 
-            // Load all reservations and filter by date
-            firestoreManager.getReservationsByUser(userId, new FirestoreManager.FirestoreCallback<List<Reservation>>() {
-                @Override
-                public void onSuccess(List<Reservation> allReservations) {
-                    LocalDate today = LocalDate.now();
+    /**
+     * 일반 사용자용: 자신의 예약만 로드합니다.
+     */
+    private void loadUserReservations(String userId) {
+        firestoreManager.getReservationsByUser(userId, new FirestoreManager.FirestoreCallback<List<Reservation>>() {
+            @Override
+            public void onSuccess(List<Reservation> allReservations) {
+                processAndSetReservations(allReservations);
+            }
 
-                    List<Reservation> upcoming = allReservations.stream()
-                            .filter(r -> !r.getDate().isBefore(today) && r.getStatus() != ReservationStatus.CANCELLED)
-                            .sorted((r1, r2) -> {
-                                int dateCompare = r2.getDate().compareTo(r1.getDate());
-                                if (dateCompare != 0) return dateCompare;
-                                return r2.getStartTime().compareTo(r1.getStartTime());
-                            })
-                            .collect(Collectors.toList());
+            @Override
+            public void onFailure(Exception e) {
+                error.setValue(e.getMessage());
+            }
+        });
+    }
 
-                    List<Reservation> past = allReservations.stream()
-                            .filter(r -> r.getDate().isBefore(today) && r.getStatus() != ReservationStatus.CANCELLED)
-                            .sorted((r1, r2) -> {
-                                int dateCompare = r2.getDate().compareTo(r1.getDate());
-                                if (dateCompare != 0) return dateCompare;
-                                return r2.getStartTime().compareTo(r1.getStartTime());
-                            })
-                            .collect(Collectors.toList());
+    /**
+     * 예약 목록을 날짜와 상태에 따라 분류합니다.
+     */
+    private void processAndSetReservations(List<Reservation> allReservations) {
+        LocalDate today = LocalDate.now();
 
-                    List<Reservation> cancelled = allReservations.stream()
-                            .filter(r -> r.getStatus() == ReservationStatus.CANCELLED)
-                            .sorted((r1, r2) -> {
-                                int dateCompare = r2.getDate().compareTo(r1.getDate());
-                                if (dateCompare != 0) return dateCompare;
-                                return r2.getStartTime().compareTo(r1.getStartTime());
-                            })
-                            .collect(Collectors.toList());
+        List<Reservation> upcoming = allReservations.stream()
+                .filter(r -> !r.getDate().isBefore(today) && r.getStatus() != ReservationStatus.CANCELLED)
+                .sorted((r1, r2) -> {
+                    int dateCompare = r2.getDate().compareTo(r1.getDate());
+                    if (dateCompare != 0) return dateCompare;
+                    return r2.getStartTime().compareTo(r1.getStartTime());
+                })
+                .collect(Collectors.toList());
 
-                    upcomingReservations.setValue(upcoming);
-                    pastReservations.setValue(past);
-                    cancelledReservations.setValue(cancelled);
-                }
+        List<Reservation> past = allReservations.stream()
+                .filter(r -> r.getDate().isBefore(today) && r.getStatus() != ReservationStatus.CANCELLED)
+                .sorted((r1, r2) -> {
+                    int dateCompare = r2.getDate().compareTo(r1.getDate());
+                    if (dateCompare != 0) return dateCompare;
+                    return r2.getStartTime().compareTo(r1.getStartTime());
+                })
+                .collect(Collectors.toList());
 
-                @Override
-                public void onFailure(Exception e) {
-                    error.setValue(e.getMessage());
-                }
-            });
-        }
+        List<Reservation> cancelled = allReservations.stream()
+                .filter(r -> r.getStatus() == ReservationStatus.CANCELLED)
+                .sorted((r1, r2) -> {
+                    int dateCompare = r2.getDate().compareTo(r1.getDate());
+                    if (dateCompare != 0) return dateCompare;
+                    return r2.getStartTime().compareTo(r1.getStartTime());
+                })
+                .collect(Collectors.toList());
+
+        upcomingReservations.setValue(upcoming);
+        pastReservations.setValue(past);
+        cancelledReservations.setValue(cancelled);
     }
 
     public void refresh() {

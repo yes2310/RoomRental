@@ -78,7 +78,7 @@ app/src/main/java/com/example/bangbillija/
 ├── service/                 # Business logic
 │   ├── AuthManager.java     # Firebase Auth wrapper (singleton)
 │   ├── SlotEngine.java      # Time slot calculation engine
-│   └── QrManager.java       # QR code generation/validation
+│   └── FirestoreManager.java # Firestore database operations
 ├── ui/                      # UI layer
 │   ├── MainActivity.java    # Fragment host + Navigator
 │   ├── Navigator.java       # Navigation interface
@@ -88,7 +88,8 @@ app/src/main/java/com/example/bangbillija/
 │   ├── reservations/       # My reservations & detail views
 │   └── checkin/            # QR check-in
 └── util/                    # Utilities
-    └── SimpleTextWatcher.java
+    ├── SimpleTextWatcher.java
+    └── QRCodeUtil.java      # QR code generation using ZXing
 ```
 
 ## Firebase Configuration

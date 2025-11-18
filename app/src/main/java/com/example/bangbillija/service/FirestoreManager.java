@@ -194,6 +194,22 @@ public class FirestoreManager {
                 .addOnFailureListener(callback::onFailure);
     }
 
+    public void getAllReservations(FirestoreCallback<List<Reservation>> callback) {
+        db.collection(COLLECTION_RESERVATIONS)
+                .get()
+                .addOnSuccessListener(querySnapshot -> {
+                    List<Reservation> reservations = new ArrayList<>();
+                    for (DocumentSnapshot doc : querySnapshot.getDocuments()) {
+                        Reservation reservation = documentToReservation(doc);
+                        if (reservation != null) {
+                            reservations.add(reservation);
+                        }
+                    }
+                    callback.onSuccess(reservations);
+                })
+                .addOnFailureListener(callback::onFailure);
+    }
+
     public void getReservationsByRoomAndDate(String roomId, LocalDate date, FirestoreCallback<List<Reservation>> callback) {
         // Convert LocalDate to String for Firestore query (dates are stored as strings)
         String dateStr = date.toString();

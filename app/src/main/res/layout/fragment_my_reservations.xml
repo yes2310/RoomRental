@@ -84,6 +84,17 @@
                         android:textSize="11sp"
                         android:textStyle="bold"
                         android:visibility="gone" />
+
+                    <TextView
+                        android:id="@+id/textAdminViewMode"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:text="📋 전체 예약 보기 모드"
+                        android:textColor="@color/primary"
+                        android:textSize="11sp"
+                        android:textStyle="bold"
+                        android:visibility="gone" />
                 </LinearLayout>
 
                 <!-- 로그아웃 버튼 -->

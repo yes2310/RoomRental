@@ -140,24 +140,43 @@ public class CalendarFragment extends Fragment {
             return;
         }
 
-        String userId = authManager.currentUser().getUid();
         FirestoreManager firestoreManager = FirestoreManager.getInstance();
 
-        firestoreManager.getReservationsByUser(userId, new FirestoreManager.FirestoreCallback<>() {
-            @Override
-            public void onSuccess(List<Reservation> reservations) {
-                allReservations = reservations;
-                // 현재 선택된 날짜의 예약 표시
-                if (selectedDate != null) {
-                    showReservationsForDate(selectedDate);
+        // 관리자인 경우 모든 예약 로드, 일반 사용자는 자신의 예약만 로드
+        if (authManager.isAdmin()) {
+            firestoreManager.getAllReservations(new FirestoreManager.FirestoreCallback<>() {
+                @Override
+                public void onSuccess(List<Reservation> reservations) {
+                    allReservations = reservations;
+                    // 현재 선택된 날짜의 예약 표시
+                    if (selectedDate != null) {
+                        showReservationsForDate(selectedDate);
+                    }
                 }
-            }
 
-            @Override
-            public void onFailure(Exception e) {
-                // Handle error silently
-            }
-        });
+                @Override
+                public void onFailure(Exception e) {
+                    // Handle error silently
+                }
+            });
+        } else {
+            String userId = authManager.currentUser().getUid();
+            firestoreManager.getReservationsByUser(userId, new FirestoreManager.FirestoreCallback<>() {
+                @Override
+                public void onSuccess(List<Reservation> reservations) {
+                    allReservations = reservations;
+                    // 현재 선택된 날짜의 예약 표시
+                    if (selectedDate != null) {
+                        showReservationsForDate(selectedDate);
+                    }
+                }
+
+                @Override
+                public void onFailure(Exception e) {
+                    // Handle error silently
+                }
+            });
+        }
     }
 
     private void updateSelectedDateInfo() {
@@ -218,78 +237,27 @@ public class CalendarFragment extends Fragment {
     }
 
     private void showCancelConfirmDialog(Reservation reservation) {
-        new androidx.appcompat.app.AlertDialog.Builder(requireContext())
-                .setTitle("예약 취소")
-                .setMessage("'" + reservation.getTitle() + "' 예약을 취소하시겠습니까?\n\n" +
-                        "날짜: " + reservation.getDate() + "\n" +
-                        "시간: " + reservation.getStartTime() + " - " + reservation.getEndTime())
-                .setPositiveButton("취소하기", (dialog, which) -> {
-                    com.example.bangbillija.data.ReservationRepository.getInstance()
-                            .cancelReservationByReservationId(reservation.getId(),
-                                    new FirestoreManager.FirestoreCallback<Void>() {
-                                        @Override
-                                        public void onSuccess(Void result) {
-                                            if (binding != null) {
-                                                com.google.android.material.snackbar.Snackbar.make(
-                                                        binding.getRoot(),
-                                                        "예약이 취소되었습니다",
-                                                        com.google.android.material.snackbar.Snackbar.LENGTH_SHORT
-                                                ).show();
-                                            }
-                                            loadReservations();
-                                        }
-
-                                        @Override
-                                        public void onFailure(Exception e) {
-                                            if (binding != null) {
-                                                com.google.android.material.snackbar.Snackbar.make(
-                                                        binding.getRoot(),
-                                                        "취소 실패: " + e.getMessage(),
-                                                        com.google.android.material.snackbar.Snackbar.LENGTH_LONG
-                                                ).show();
-                                            }
-                                        }
-                                    });
-                })
-                .setNegativeButton("돌아가기", null)
-                .show();
+        if (binding == null) {
+            return;
+        }
+        com.example.bangbillija.ui.reservations.ReservationDialogHelper.showCancelConfirmDialog(
+                requireContext(),
+                reservation,
+                binding.getRoot(),
+                this::loadReservations
+        );
     }
 
     private void showDeleteConfirmDialog(Reservation reservation) {
-        new androidx.appcompat.app.AlertDialog.Builder(requireContext())
-                .setTitle("예약 삭제")
-                .setMessage("'" + reservation.getTitle() + "' 예약 기록을 완전히 삭제하시겠습니까?\n\n" +
-                        "이 작업은 되돌릴 수 없습니다.")
-                .setPositiveButton("삭제", (dialog, which) -> {
-                    FirestoreManager.getInstance()
-                            .deleteReservation(reservation.getId(),
-                                    new FirestoreManager.FirestoreCallback<Void>() {
-                                        @Override
-                                        public void onSuccess(Void result) {
-                                            if (binding != null) {
-                                                com.google.android.material.snackbar.Snackbar.make(
-                                                        binding.getRoot(),
-                                                        "예약이 삭제되었습니다",
-                                                        com.google.android.material.snackbar.Snackbar.LENGTH_SHORT
-                                                ).show();
-                                            }
-                                            loadReservations();
-                                        }
-
-                                        @Override
-                                        public void onFailure(Exception e) {
-                                            if (binding != null) {
-                                                com.google.android.material.snackbar.Snackbar.make(
-                                                        binding.getRoot(),
-                                                        "삭제 실패: " + e.getMessage(),
-                                                        com.google.android.material.snackbar.Snackbar.LENGTH_LONG
-                                                ).show();
-                                            }
-                                        }
-                                    });
-                })
-                .setNegativeButton("취소", null)
-                .show();
+        if (binding == null) {
+            return;
+        }
+        com.example.bangbillija.ui.reservations.ReservationDialogHelper.showDeleteConfirmDialog(
+                requireContext(),
+                reservation,
+                binding.getRoot(),
+                this::loadReservations
+        );
     }
 
     @Override
