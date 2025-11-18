@@ -5,35 +5,33 @@
     android:viewportWidth="108"
     android:viewportHeight="108">
 
-    <!-- 중앙에 흰색 원형 배경 -->
+    <!-- 중앙에 동그란 배경 (선택사항) -->
     <path
-        android:pathData="M54,54m-35,0a35,35 0,1 1,70 0a35,35 0,1 1,-70 0"
+        android:pathData="M54,54m-28,0a28,28 0,1 1,56 0a28,28 0,1 1,-56 0"
         android:fillColor="#FFFFFF"
-        android:fillAlpha="0.2"/>
+        android:fillAlpha="0.12"/>
 
-    <!-- 집/방 아이콘 (간단한 집 모양) -->
-    <!-- 지붕 -->
+    <!-- "방" 글자 벡터 표현 (굵고 단순하게) -->
+
+    <!-- ㅂ (위쪽 사각형 모양) -->
     <path
-        android:pathData="M54,35L70,47L70,45L54,33L38,45L38,47Z"
+        android:pathData="M40,38 L40,48 L48,48 L48,38 L40,38 M40,41 L48,41 M41,38 L41,48 M47,38 L47,48"
+        android:fillColor="#FFFFFF"
+        android:fillType="evenOdd"/>
+
+    <path
+        android:pathData="M40,38 h8 v3 h-8 z M40,45 h8 v3 h-8 z M40,38 h3 v10 h-3 z M45,38 h3 v10 h-3 z"
         android:fillColor="#FFFFFF"/>
 
-    <!-- 벽 -->
+    <!-- ㅏ (세로선 + 짧은 가로선) -->
     <path
-        android:pathData="M40,48L68,48L68,73L40,73Z"
+        android:pathData="M56,38 h3.5 v26 h-3.5 z M60,45 h5 v3 h-5 z"
         android:fillColor="#FFFFFF"/>
 
-    <!-- 문 -->
+    <!-- ㅇ (원) -->
     <path
-        android:pathData="M48,58L60,58L60,73L48,73Z"
-        android:fillColor="#2196F3"/>
+        android:pathData="M44,60 m-7,0 a7,7 0,1 0,14 0 a7,7 0,1 0,-14 0 M44,60 m-4,0 a4,4 0,1 1,8 0 a4,4 0,1 1,-8 0"
+        android:fillColor="#FFFFFF"
+        android:fillType="evenOdd"/>
 
-    <!-- 창문 왼쪽 -->
-    <path
-        android:pathData="M44,52L50,52L50,57L44,57Z"
-        android:fillColor="#2196F3"/>
-
-    <!-- 창문 오른쪽 -->
-    <path
-        android:pathData="M58,52L64,52L64,57L58,57Z"
-        android:fillColor="#2196F3"/>
 </vector>
