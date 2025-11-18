@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="black">#FF000000</color>
+    <color name="white">#FFFFFFFF</color>
+
+    <!-- Dark mode color palette -->
+    <color name="primary">#64B5F6</color>
+    <color name="on_primary">#003258</color>
+    <color name="primary_container">#004A77</color>
+    <color name="on_primary_container">#D1E4FF</color>
+
+    <color name="secondary">#34D399</color>
+    <color name="on_secondary">#003920</color>
+    <color name="secondary_container">#065F46</color>
+
+    <color name="tertiary">#FCD34D</color>
+    <color name="tertiary_container">#78350F</color>
+
+    <color name="error">#F87171</color>
+    <color name="error_container">#7F1D1D</color>
+
+    <color name="background">#121212</color>
+    <color name="on_background">#E3E3E3</color>
+    <color name="surface">#1E1E1E</color>
+    <color name="on_surface">#E3E3E3</color>
+    <color name="surface_variant">#2C2C2C</color>
+    <color name="on_surface_variant">#B0B0B0</color>
+
+    <color name="outline">#6B7280</color>
+    <color name="outline_variant">#374151</color>
+
+    <color name="status_available">#34D399</color>
+    <color name="status_reserved">#F87171</color>
+    <color name="status_pending">#FCD34D</color>
+    <color name="status_checked_in">#64B5F6</color>
+
+    <color name="ripple">#1A64B5F6</color>
+</resources>
