@@ -36,7 +36,7 @@ public class LoginActivity extends AppCompatActivity {
         }
 
         binding.buttonLogin.setOnClickListener(v -> attemptLogin());
-        binding.buttonRegister.setOnClickListener(v -> attemptRegister());
+        binding.buttonGoToRegister.setOnClickListener(v -> navigateToRegister());
     }
 
     private void attemptLogin() {
@@ -65,40 +65,12 @@ public class LoginActivity extends AppCompatActivity {
         });
     }
 
-    private void attemptRegister() {
-        clearErrors();
-        String email = getTrimmed(binding.inputEmail.getText());
-        String password = getTrimmed(binding.inputPassword.getText());
-        String displayName = getTrimmed(binding.inputDisplayName.getText());
-
-        if (!validateCredentials(email, password)) {
-            return;
-        }
-
-        setLoading(true);
-        authManager.signUp(email, password, displayName, new AuthManager.Completion() {
-            @Override
-            public void onSuccess() {
-                setLoading(false);
-                Snackbar.make(binding.getRoot(), R.string.message_register_success, Snackbar.LENGTH_SHORT).show();
-                navigateToMain();
-            }
-
-            @Override
-            public void onFailure(Exception e) {
-                setLoading(false);
-                showError(e);
-            }
-        });
-    }
-
     private void setLoading(boolean loading) {
         binding.progressBar.setVisibility(loading ? View.VISIBLE : View.GONE);
         binding.buttonLogin.setEnabled(!loading);
-        binding.buttonRegister.setEnabled(!loading);
+        binding.buttonGoToRegister.setEnabled(!loading);
         binding.inputEmailLayout.setEnabled(!loading);
         binding.inputPasswordLayout.setEnabled(!loading);
-        binding.inputNameLayout.setEnabled(!loading);
     }
 
     private void showError(Exception e) {
@@ -137,5 +109,10 @@ public class LoginActivity extends AppCompatActivity {
         intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
         startActivity(intent);
         finish();
+    }
+
+    private void navigateToRegister() {
+        Intent intent = new Intent(this, RegisterActivity.class);
+        startActivity(intent);
     }
 }

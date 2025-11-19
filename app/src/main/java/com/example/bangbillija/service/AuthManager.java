@@ -91,7 +91,15 @@ public class AuthManager {
                 });
     }
 
-    public void signUp(String email, String password, String displayName, Completion completion) {
+    /**
+     * 회원가입 (학번과 이름 포함)
+     * @param email 이메일
+     * @param password 비밀번호
+     * @param name 이름
+     * @param studentId 학번
+     * @param completion 완료 콜백
+     */
+    public void signUp(String email, String password, String name, String studentId, Completion completion) {
         auth.createUserWithEmailAndPassword(email, password)
                 .addOnCompleteListener(task -> {
                     if (!task.isSuccessful()) {
@@ -105,20 +113,43 @@ public class AuthManager {
                         return;
                     }
 
-                    String safeName = (displayName == null || displayName.trim().isEmpty())
-                            ? user.getEmail()
-                            : displayName.trim();
-
+                    // FirebaseAuth의 displayName에 이름 저장
                     user.updateProfile(new UserProfileChangeRequest.Builder()
-                            .setDisplayName(safeName)
+                            .setDisplayName(name)
                             .build())
                             .addOnCompleteListener(updateTask -> {
-                                if (updateTask.isSuccessful()) {
-                                    completion.onSuccess();
-                                } else {
+                                if (!updateTask.isSuccessful()) {
                                     completion.onFailure(updateTask.getException());
+                                    return;
                                 }
+
+                                // Firestore의 users 컬렉션에 사용자 정보 저장
+                                saveUserToFirestore(user.getUid(), email, name, studentId, completion);
                             });
+                });
+    }
+
+    /**
+     * Firestore에 사용자 정보 저장
+     */
+    private void saveUserToFirestore(String userId, String email, String name, String studentId, Completion completion) {
+        java.util.HashMap<String, Object> userMap = new java.util.HashMap<>();
+        userMap.put("userId", userId);
+        userMap.put("email", email);
+        userMap.put("name", name);
+        userMap.put("studentId", studentId);
+        userMap.put("createdAt", System.currentTimeMillis());
+
+        db.collection("users")
+                .document(userId)
+                .set(userMap)
+                .addOnSuccessListener(aVoid -> {
+                    android.util.Log.d("AuthManager", "User info saved to Firestore: " + userId);
+                    completion.onSuccess();
+                })
+                .addOnFailureListener(e -> {
+                    android.util.Log.e("AuthManager", "Failed to save user info", e);
+                    completion.onFailure(e);
                 });
     }
 
