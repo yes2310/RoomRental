@@ -15,6 +15,7 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import com.example.bangbillija.core.SharedReservationViewModel;
 import com.example.bangbillija.databinding.FragmentCalendarBinding;
 import com.example.bangbillija.model.Reservation;
+import com.example.bangbillija.model.Room;
 import com.example.bangbillija.service.AuthManager;
 import com.example.bangbillija.service.FirestoreManager;
 import com.example.bangbillija.ui.Navigator;
@@ -61,6 +62,20 @@ public class CalendarFragment extends Fragment {
             @Override
             public void onPrimaryAction(Reservation reservation) {
                 viewModel.focusReservation(reservation);
+
+                // 상세보기 화면을 위해 Room 정보도 설정
+                List<Room> rooms = viewModel.getRooms().getValue();
+                if (rooms != null) {
+                    Room matchingRoom = rooms.stream()
+                            .filter(r -> r.getId().equals(reservation.getRoomId()))
+                            .findFirst()
+                            .orElse(null);
+
+                    if (matchingRoom != null) {
+                        viewModel.selectRoom(matchingRoom);
+                    }
+                }
+
                 if (getActivity() instanceof Navigator) {
                     ((Navigator) getActivity()).openReservationDetail();
                 }

@@ -17,6 +17,7 @@ import com.example.bangbillija.core.SharedReservationViewModel;
 import com.example.bangbillija.databinding.FragmentMyReservationsBinding;
 import com.example.bangbillija.model.Reservation;
 import com.example.bangbillija.model.ReservationStatus;
+import com.example.bangbillija.model.Room;
 import com.example.bangbillija.service.AuthManager;
 import com.example.bangbillija.ui.Navigator;
 import com.example.bangbillija.ui.auth.LoginActivity;
@@ -151,6 +152,21 @@ public class MyReservationsFragment extends Fragment implements MyReservationsAd
 
     private void handleReservationAction(Reservation reservation, boolean primary) {
         viewModel.focusReservation(reservation);
+
+        // 상세보기 화면을 위해 Room 정보도 설정
+        viewModel.getRooms().getValue();
+        List<Room> rooms = viewModel.getRooms().getValue();
+        if (rooms != null) {
+            Room matchingRoom = rooms.stream()
+                    .filter(r -> r.getId().equals(reservation.getRoomId()))
+                    .findFirst()
+                    .orElse(null);
+
+            if (matchingRoom != null) {
+                viewModel.selectRoom(matchingRoom);
+            }
+        }
+
         if (primary && reservation.getStatus() == ReservationStatus.RESERVED) {
             if (getActivity() instanceof Navigator) {
                 ((Navigator) getActivity()).openQrScanner();
