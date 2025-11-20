@@ -24,6 +24,7 @@ import com.example.bangbillija.ui.rooms.RoomListFragment;
 import com.example.bangbillija.ui.auth.LoginActivity;
 import com.example.bangbillija.ui.timetable.TimetableFragment;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
+import com.google.android.material.snackbar.Snackbar;
 
 import android.widget.TextView;
 
@@ -96,6 +97,9 @@ public class MainActivity extends AppCompatActivity implements Navigator {
 
         if (savedInstanceState == null) {
             bottomNavigationView.setSelectedItemId(R.id.menu_rooms);
+
+            // 회원가입 후 환영 메시지 표시
+            checkAndShowWelcomeMessage();
         }
     }
 
@@ -211,5 +215,20 @@ public class MainActivity extends AppCompatActivity implements Navigator {
         intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
         startActivity(intent);
         finish();
+    }
+
+    private void checkAndShowWelcomeMessage() {
+        Intent intent = getIntent();
+        if (intent != null && intent.getBooleanExtra("new_user", false)) {
+            String userName = intent.getStringExtra("user_name");
+            if (userName != null && !userName.isEmpty()) {
+                // UI가 완전히 로드된 후 환영 메시지 표시
+                findViewById(android.R.id.content).post(() -> {
+                    Snackbar.make(findViewById(R.id.fragmentContainer),
+                            userName + "님, 방빌려에 오신 것을 환영합니다!",
+                            Snackbar.LENGTH_LONG).show();
+                });
+            }
+        }
     }
 }

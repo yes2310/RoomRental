@@ -381,6 +381,7 @@ public class FirestoreManager {
             String roomName = doc.getString("roomName");
             String title = doc.getString("title");
             String owner = doc.getString("owner");
+            String ownerStudentId = doc.getString("ownerStudentId");  // 학번
             String dateStr = doc.getString("date");
             String startTimeStr = doc.getString("startTime");
             String endTimeStr = doc.getString("endTime");
@@ -394,7 +395,12 @@ public class FirestoreManager {
             LocalTime endTime = LocalTime.parse(endTimeStr);
             ReservationStatus status = statusStr != null ? ReservationStatus.valueOf(statusStr) : ReservationStatus.PENDING;
 
-            return new Reservation(id, roomId, roomName, title, owner, date, startTime, endTime, attendees, status, note);
+            // 학번이 없는 경우 빈 문자열로 처리 (기존 예약 호환성)
+            if (ownerStudentId == null) {
+                ownerStudentId = "";
+            }
+
+            return new Reservation(id, roomId, roomName, title, owner, ownerStudentId, date, startTime, endTime, attendees, status, note);
         } catch (Exception e) {
             e.printStackTrace();
             return null;
@@ -422,6 +428,7 @@ public class FirestoreManager {
         data.put("roomName", reservation.getRoomName());
         data.put("title", reservation.getTitle());
         data.put("owner", reservation.getOwner());
+        data.put("ownerStudentId", reservation.getOwnerStudentId());  // 학번
         data.put("date", reservation.getDate().toString());
         data.put("startTime", reservation.getStartTime().toString());
         data.put("endTime", reservation.getEndTime().toString());
@@ -431,6 +438,20 @@ public class FirestoreManager {
         data.put("createdAt", Timestamp.now());
         data.put("updatedAt", Timestamp.now());
         return data;
+    }
+
+    /**
+     * 사용자의 학번을 가져옵니다.
+     */
+    public void getUserStudentId(String userId, FirestoreCallback<String> callback) {
+        db.collection("users")
+                .document(userId)
+                .get()
+                .addOnSuccessListener(documentSnapshot -> {
+                    String studentId = documentSnapshot.getString("studentId");
+                    callback.onSuccess(studentId != null ? studentId : "");
+                })
+                .addOnFailureListener(callback::onFailure);
     }
 
     private TimetableEntry documentToTimetableEntry(DocumentSnapshot doc) {

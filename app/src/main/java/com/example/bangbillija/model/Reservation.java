@@ -11,6 +11,7 @@ public class Reservation {
     private final String roomName;
     private final String title;
     private final String owner;
+    private final String ownerStudentId;  // 예약자 학번
     private final LocalDate date;
     private final LocalTime startTime;
     private final LocalTime endTime;
@@ -19,13 +20,14 @@ public class Reservation {
     private final String note;
 
     public Reservation(String id, String roomId, String roomName, String title, String owner,
-                       LocalDate date, LocalTime startTime, LocalTime endTime,
+                       String ownerStudentId, LocalDate date, LocalTime startTime, LocalTime endTime,
                        int attendees, ReservationStatus status, String note) {
         this.id = id;
         this.roomId = roomId;
         this.roomName = roomName;
         this.title = title;
         this.owner = owner;
+        this.ownerStudentId = ownerStudentId;
         this.date = date;
         this.startTime = startTime;
         this.endTime = endTime;
@@ -52,6 +54,10 @@ public class Reservation {
 
     public String getOwner() {
         return owner;
+    }
+
+    public String getOwnerStudentId() {
+        return ownerStudentId;
     }
 
     public LocalDate getDate() {
@@ -93,6 +99,7 @@ public class Reservation {
                 && Objects.equals(roomName, that.roomName)
                 && Objects.equals(title, that.title)
                 && Objects.equals(owner, that.owner)
+                && Objects.equals(ownerStudentId, that.ownerStudentId)
                 && Objects.equals(date, that.date)
                 && Objects.equals(startTime, that.startTime)
                 && Objects.equals(endTime, that.endTime)
@@ -102,6 +109,6 @@ public class Reservation {
 
     @Override
     public int hashCode() {
-        return Objects.hash(id, roomId, roomName, title, owner, date, startTime, endTime, attendees, status, note);
+        return Objects.hash(id, roomId, roomName, title, owner, ownerStudentId, date, startTime, endTime, attendees, status, note);
     }
 }

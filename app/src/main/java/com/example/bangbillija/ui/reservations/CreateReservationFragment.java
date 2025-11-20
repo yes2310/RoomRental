@@ -390,46 +390,59 @@ public class CreateReservationFragment extends Fragment {
             return;
         }
 
-        // Create reservation ID
-        String reservationId = generateReservationId();
-        String ownerName = user.getDisplayName() != null ? user.getDisplayName() : user.getEmail();
-
-        // 관리자 승인 없이 바로 RESERVED 상태로 생성
-        Reservation reservation = new Reservation(
-                reservationId,
-                selectedRoom.getId(),
-                selectedRoom.getName(),
-                title,
-                ownerName,
-                selectedDate,
-                selectedStartTime,
-                selectedEndTime,
-                attendees,
-                ReservationStatus.RESERVED,
-                note
-        );
-
         // Show loading
         setLoading(true);
 
-        // Create in repository
+        // Create reservation ID
+        String reservationId = generateReservationId();
+        String ownerName = user.getDisplayName() != null ? user.getDisplayName() : user.getEmail();
         String userId = user.getUid();
         String userEmail = user.getEmail();
 
-        reservationRepository.createReservation(reservation, userId, userEmail, new FirestoreManager.FirestoreCallback<String>() {
+        // 사용자의 학번 가져오기
+        FirestoreManager.getInstance().getUserStudentId(userId, new FirestoreManager.FirestoreCallback<String>() {
             @Override
-            public void onSuccess(String documentId) {
-                setLoading(false);
-                Snackbar.make(binding.getRoot(), "예약이 확정되었습니다!", Snackbar.LENGTH_LONG).show();
-                if (getActivity() != null) {
-                    requireActivity().onBackPressed();
-                }
+            public void onSuccess(String studentId) {
+                // 관리자 승인 없이 바로 RESERVED 상태로 생성
+                Reservation reservation = new Reservation(
+                        reservationId,
+                        selectedRoom.getId(),
+                        selectedRoom.getName(),
+                        title,
+                        ownerName,
+                        studentId,  // 학번 추가
+                        selectedDate,
+                        selectedStartTime,
+                        selectedEndTime,
+                        attendees,
+                        ReservationStatus.RESERVED,
+                        note
+                );
+
+                // Create in repository
+                reservationRepository.createReservation(reservation, userId, userEmail, new FirestoreManager.FirestoreCallback<String>() {
+                    @Override
+                    public void onSuccess(String documentId) {
+                        setLoading(false);
+                        Snackbar.make(binding.getRoot(), "예약이 확정되었습니다!", Snackbar.LENGTH_LONG).show();
+                        if (getActivity() != null) {
+                            requireActivity().onBackPressed();
+                        }
+                    }
+
+                    @Override
+                    public void onFailure(Exception e) {
+                        setLoading(false);
+                        Snackbar.make(binding.getRoot(), "예약 생성 실패: " + e.getMessage(),
+                                Snackbar.LENGTH_LONG).show();
+                    }
+                });
             }
 
             @Override
             public void onFailure(Exception e) {
                 setLoading(false);
-                Snackbar.make(binding.getRoot(), "예약 생성 실패: " + e.getMessage(),
+                Snackbar.make(binding.getRoot(), "학번 조회 실패: " + e.getMessage(),
                         Snackbar.LENGTH_LONG).show();
             }
         });

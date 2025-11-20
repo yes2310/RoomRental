@@ -58,8 +58,8 @@ public class RegisterActivity extends AppCompatActivity {
             @Override
             public void onSuccess() {
                 setLoading(false);
-                Snackbar.make(binding.getRoot(), R.string.message_register_success, Snackbar.LENGTH_SHORT).show();
-                navigateToMain();
+                // 회원가입 성공 후 MainActivity에 환영 메시지 표시를 위한 플래그와 함께 이동
+                navigateToMainWithWelcome(name);
             }
 
             @Override
@@ -143,6 +143,15 @@ public class RegisterActivity extends AppCompatActivity {
     private void navigateToMain() {
         Intent intent = new Intent(this, MainActivity.class);
         intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
+        startActivity(intent);
+        finish();
+    }
+
+    private void navigateToMainWithWelcome(String userName) {
+        Intent intent = new Intent(this, MainActivity.class);
+        intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
+        intent.putExtra("new_user", true);
+        intent.putExtra("user_name", userName);
         startActivity(intent);
         finish();
     }

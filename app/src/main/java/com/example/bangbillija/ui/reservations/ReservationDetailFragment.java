@@ -121,7 +121,14 @@ public class ReservationDetailFragment extends Fragment {
                 + (minutes / 60) + "시간 " + (minutes % 60) + "분)");
 
         addRow("참석 인원", currentReservation.getAttendees() + "명");
-        addRow("예약자", currentReservation.getOwner());
+
+        // 예약자 정보 (학번 포함)
+        String ownerInfo = currentReservation.getOwner();
+        if (currentReservation.getOwnerStudentId() != null && !currentReservation.getOwnerStudentId().isEmpty()) {
+            ownerInfo += " (" + currentReservation.getOwnerStudentId() + ")";
+        }
+        addRow("예약자", ownerInfo);
+
         addRow("목적", currentReservation.getNote());
 
         // QR 코드 생성 및 표시 (PENDING 또는 RESERVED 상태일 때만)
@@ -303,10 +310,16 @@ public class ReservationDetailFragment extends Fragment {
             return;
         }
 
+        // 예약자 정보 (학번 포함)
+        String ownerDisplay = currentReservation.getOwner();
+        if (currentReservation.getOwnerStudentId() != null && !currentReservation.getOwnerStudentId().isEmpty()) {
+            ownerDisplay += " (" + currentReservation.getOwnerStudentId() + ")";
+        }
+
         new MaterialAlertDialogBuilder(requireContext())
                 .setTitle("예약 승인")
                 .setMessage("이 예약을 승인하시겠습니까?\n\n" +
-                        "예약자: " + currentReservation.getOwner() + "\n" +
+                        "예약자: " + ownerDisplay + "\n" +
                         "날짜: " + currentReservation.getDate().format(dateFormatter) + "\n" +
                         "시간: " + currentReservation.getStartTime().format(timeFormatter) +
                         " - " + currentReservation.getEndTime().format(timeFormatter))
