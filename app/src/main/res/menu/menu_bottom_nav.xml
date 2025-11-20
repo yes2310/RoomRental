@@ -2,7 +2,7 @@
 <menu xmlns:android="http://schemas.android.com/apk/res/android">
     <item
         android:id="@+id/menu_rooms"
-        android:icon="@android:drawable/ic_menu_myplaces"
+        android:icon="@drawable/ic_room"
         android:title="@string/menu_rooms" />
     <item
         android:id="@+id/menu_calendar"
