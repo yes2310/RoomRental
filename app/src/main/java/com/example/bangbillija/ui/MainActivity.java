@@ -177,6 +177,38 @@ public class MainActivity extends AppCompatActivity implements Navigator {
         }
     }
 
+    @Override
+    public void openEditRoom(com.example.bangbillija.model.Room room) {
+        android.util.Log.d("MainActivity", "========== openEditRoom called ==========");
+
+        // Bundle로 Room 정보 전달
+        Fragment editRoomFragment = new AddRoomFragment();
+        Bundle args = new Bundle();
+        args.putString("room_id", room.getId());
+        args.putString("room_name", room.getName());
+        args.putString("building", room.getBuilding());
+        args.putInt("capacity", room.getCapacity());
+        args.putString("floor", room.getFloor());
+        args.putStringArrayList("facilities", new java.util.ArrayList<>(room.getFacilities()));
+        args.putString("status", room.getStatus().name());
+        args.putBoolean("edit_mode", true);
+        editRoomFragment.setArguments(args);
+
+        try {
+            getSupportFragmentManager()
+                    .beginTransaction()
+                    .replace(R.id.fragmentContainer, editRoomFragment)
+                    .addToBackStack("EditRoomFragment")
+                    .commitAllowingStateLoss();
+
+            viewModel.updateToolbarTitle("강의실 수정");
+            android.util.Log.d("MainActivity", "Edit room fragment committed successfully");
+        } catch (Exception e) {
+            android.util.Log.e("MainActivity", "Edit room fragment failed", e);
+            android.widget.Toast.makeText(this, "전환 실패: " + e.getMessage(), android.widget.Toast.LENGTH_LONG).show();
+        }
+    }
+
     private void syncToolbarWithBackStack() {
         FragmentManager fm = getSupportFragmentManager();
         Fragment fragment = fm.findFragmentById(R.id.fragmentContainer);

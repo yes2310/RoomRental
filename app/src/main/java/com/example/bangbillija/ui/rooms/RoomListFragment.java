@@ -139,11 +139,15 @@ public class RoomListFragment extends Fragment implements RoomListAdapter.RoomCl
 
     @Override
     public void onRoomClicked(Room room) {
-        viewModel.selectRoom(room);
-        viewModel.focusReservation(null);
         if (getActivity() instanceof Navigator) {
-            // 강의실 클릭 시 바로 예약 화면으로 이동
-            ((Navigator) getActivity()).openCreateReservation();
+            // 관리자는 수정 화면으로, 일반 사용자는 예약 화면으로 이동
+            if (authManager.isAdmin()) {
+                ((Navigator) getActivity()).openEditRoom(room);
+            } else {
+                viewModel.selectRoom(room);
+                viewModel.focusReservation(null);
+                ((Navigator) getActivity()).openCreateReservation();
+            }
         }
     }
 

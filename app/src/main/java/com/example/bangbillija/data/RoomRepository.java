@@ -70,6 +70,22 @@ public class RoomRepository {
         });
     }
 
+    public void updateRoom(Room room, FirestoreManager.FirestoreCallback<Void> callback) {
+        firestoreManager.updateRoom(room, new FirestoreManager.FirestoreCallback<Void>() {
+            @Override
+            public void onSuccess(Void result) {
+                loadRooms(); // Refresh list after updating
+                callback.onSuccess(result);
+            }
+
+            @Override
+            public void onFailure(Exception e) {
+                error.setValue(e.getMessage());
+                callback.onFailure(e);
+            }
+        });
+    }
+
     public void deleteRoom(String roomId, FirestoreManager.FirestoreCallback<Void> callback) {
         firestoreManager.deleteRoom(roomId, new FirestoreManager.FirestoreCallback<Void>() {
             @Override

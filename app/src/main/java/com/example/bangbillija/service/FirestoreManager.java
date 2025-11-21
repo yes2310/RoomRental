@@ -68,6 +68,15 @@ public class FirestoreManager {
                 .addOnFailureListener(callback::onFailure);
     }
 
+    public void updateRoom(Room room, FirestoreCallback<Void> callback) {
+        Map<String, Object> data = roomToMap(room);
+        db.collection(COLLECTION_ROOMS)
+                .document(room.getId())
+                .set(data)
+                .addOnSuccessListener(aVoid -> callback.onSuccess(null))
+                .addOnFailureListener(callback::onFailure);
+    }
+
     public void deleteRoom(String roomId, FirestoreCallback<Void> callback) {
         db.collection(COLLECTION_ROOMS)
                 .document(roomId)

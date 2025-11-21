@@ -26,6 +26,8 @@ public class AddRoomFragment extends Fragment {
     private FragmentAddRoomBinding binding;
     private RoomRepository roomRepository;
     private AuthManager authManager;
+    private boolean isEditMode = false;
+    private String originalRoomId = null;
 
     @Nullable
     @Override
@@ -51,7 +53,26 @@ public class AddRoomFragment extends Fragment {
             return;
         }
 
-        binding.buttonAddRoom.setOnClickListener(v -> addRoom());
+        // Bundle에서 편집 모드 확인
+        Bundle args = getArguments();
+        if (args != null && args.getBoolean("edit_mode", false)) {
+            isEditMode = true;
+            loadRoomData(args);
+        }
+
+        // 버튼 텍스트 변경
+        if (isEditMode) {
+            binding.buttonAddRoom.setText("수정 완료");
+        }
+
+        binding.buttonAddRoom.setOnClickListener(v -> {
+            if (isEditMode) {
+                updateRoom();
+            } else {
+                addRoom();
+            }
+        });
+
         binding.buttonCancelAdd.setOnClickListener(v -> {
             if (getActivity() != null) {
                 requireActivity().onBackPressed();
@@ -59,7 +80,91 @@ public class AddRoomFragment extends Fragment {
         });
     }
 
+    private void loadRoomData(Bundle args) {
+        originalRoomId = args.getString("room_id", "");
+
+        binding.inputRoomId.setText(originalRoomId);
+        binding.inputRoomId.setEnabled(false); // 강의실 ID는 수정 불가
+
+        binding.inputRoomName.setText(args.getString("room_name", ""));
+        binding.inputBuilding.setText(args.getString("building", ""));
+        binding.inputCapacity.setText(String.valueOf(args.getInt("capacity", 0)));
+        binding.inputFloor.setText(args.getString("floor", ""));
+
+        // 시설 체크
+        List<String> facilities = args.getStringArrayList("facilities");
+        if (facilities != null) {
+            binding.chipProjector.setChecked(facilities.contains("프로젝터"));
+            binding.chipWifi.setChecked(facilities.contains("와이파이"));
+            binding.chipWhiteboard.setChecked(facilities.contains("화이트보드"));
+            binding.chipComputer.setChecked(facilities.contains("컴퓨터"));
+            binding.chipSpeaker.setChecked(facilities.contains("스피커"));
+        }
+
+        // 상태 체크
+        String status = args.getString("status", "AVAILABLE");
+        if (status.equals("AVAILABLE")) {
+            binding.chipAvailableStatus.setChecked(true);
+        } else {
+            binding.chipMaintenanceStatus.setChecked(true);
+        }
+    }
+
     private void addRoom() {
+        Room room = validateAndBuildRoom();
+        if (room == null) return;
+
+        // Show loading
+        setLoading(true);
+
+        // Add to repository
+        roomRepository.addRoom(room, new FirestoreManager.FirestoreCallback<Void>() {
+            @Override
+            public void onSuccess(Void result) {
+                setLoading(false);
+                Snackbar.make(binding.getRoot(), "강의실이 등록되었습니다", Snackbar.LENGTH_SHORT).show();
+                if (getActivity() != null) {
+                    requireActivity().onBackPressed();
+                }
+            }
+
+            @Override
+            public void onFailure(Exception e) {
+                setLoading(false);
+                Snackbar.make(binding.getRoot(), "등록 실패: " + e.getMessage(),
+                        Snackbar.LENGTH_LONG).show();
+            }
+        });
+    }
+
+    private void updateRoom() {
+        Room room = validateAndBuildRoom();
+        if (room == null) return;
+
+        // Show loading
+        setLoading(true);
+
+        // Update repository
+        roomRepository.updateRoom(room, new FirestoreManager.FirestoreCallback<Void>() {
+            @Override
+            public void onSuccess(Void result) {
+                setLoading(false);
+                Snackbar.make(binding.getRoot(), "강의실이 수정되었습니다", Snackbar.LENGTH_SHORT).show();
+                if (getActivity() != null) {
+                    requireActivity().onBackPressed();
+                }
+            }
+
+            @Override
+            public void onFailure(Exception e) {
+                setLoading(false);
+                Snackbar.make(binding.getRoot(), "수정 실패: " + e.getMessage(),
+                        Snackbar.LENGTH_LONG).show();
+            }
+        });
+    }
+
+    private Room validateAndBuildRoom() {
         // Clear errors
         binding.inputRoomIdLayout.setError(null);
         binding.inputBuildingLayout.setError(null);
@@ -103,7 +208,7 @@ public class AddRoomFragment extends Fragment {
         }
 
         if (!valid) {
-            return;
+            return null;
         }
 
         int capacity;
@@ -111,11 +216,11 @@ public class AddRoomFragment extends Fragment {
             capacity = Integer.parseInt(capacityStr);
             if (capacity <= 0) {
                 binding.inputCapacityLayout.setError("수용 인원은 1명 이상이어야 합니다");
-                return;
+                return null;
             }
         } catch (NumberFormatException e) {
             binding.inputCapacityLayout.setError("올바른 숫자를 입력하세요");
-            return;
+            return null;
         }
 
         // Get facilities
@@ -132,29 +237,7 @@ public class AddRoomFragment extends Fragment {
                 : RoomStatus.MAINTENANCE;
 
         // Create room
-        Room room = new Room(roomId, building, roomName, capacity, floor, facilities, status);
-
-        // Show loading
-        setLoading(true);
-
-        // Add to repository
-        roomRepository.addRoom(room, new FirestoreManager.FirestoreCallback<Void>() {
-            @Override
-            public void onSuccess(Void result) {
-                setLoading(false);
-                Snackbar.make(binding.getRoot(), "강의실이 등록되었습니다", Snackbar.LENGTH_SHORT).show();
-                if (getActivity() != null) {
-                    requireActivity().onBackPressed();
-                }
-            }
-
-            @Override
-            public void onFailure(Exception e) {
-                setLoading(false);
-                Snackbar.make(binding.getRoot(), "등록 실패: " + e.getMessage(),
-                        Snackbar.LENGTH_LONG).show();
-            }
-        });
+        return new Room(roomId, building, roomName, capacity, floor, facilities, status);
     }
 
     private void setLoading(boolean loading) {
