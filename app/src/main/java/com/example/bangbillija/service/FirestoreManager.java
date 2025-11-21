@@ -168,18 +168,18 @@ public class FirestoreManager {
     }
 
     public void getReservationsByRoomAndDate(String roomId, LocalDate date, FirestoreCallback<List<Reservation>> callback) {
-        // Convert LocalDate to Timestamp for Firestore query
-        Timestamp dateTimestamp = localDateToTimestamp(date);
+        // Convert LocalDate to String for Firestore query (dates are stored as strings)
+        String dateStr = date.toString();
 
         db.collection(COLLECTION_RESERVATIONS)
                 .whereEqualTo("roomId", roomId)
-                .whereEqualTo("date", dateTimestamp)
+                .whereEqualTo("date", dateStr)
                 .get()
                 .addOnSuccessListener(querySnapshot -> {
                     List<Reservation> reservations = new ArrayList<>();
                     for (DocumentSnapshot doc : querySnapshot.getDocuments()) {
                         Reservation reservation = documentToReservation(doc);
-                        if (reservation != null) {
+                        if (reservation != null && reservation.getStatus() != ReservationStatus.CANCELLED) {
                             reservations.add(reservation);
                         }
                     }
