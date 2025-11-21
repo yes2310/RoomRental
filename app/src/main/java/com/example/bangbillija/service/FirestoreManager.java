@@ -30,6 +30,7 @@ public class FirestoreManager {
     private static final String COLLECTION_ROOMS = "rooms";
     private static final String COLLECTION_RESERVATIONS = "reservations";
     private static final String COLLECTION_TIMETABLE = "timetable";
+    private static final String COLLECTION_USERS = "users";
 
     private FirestoreManager() {
         db = FirebaseFirestore.getInstance();
@@ -742,6 +743,53 @@ public class FirestoreManager {
         data.put("createdAt", Timestamp.now());
         data.put("updatedAt", Timestamp.now());
         return data;
+    }
+
+    // ==================== FCM Token Management ====================
+
+    /**
+     * FCM 토큰 저장/업데이트
+     */
+    public void updateFCMToken(String fcmToken, FirestoreCallback<Void> callback) {
+        AuthManager authManager = AuthManager.getInstance();
+        if (authManager.currentUser() == null) {
+            callback.onFailure(new Exception("User not logged in"));
+            return;
+        }
+
+        String userId = authManager.currentUser().getUid();
+        boolean isAdmin = authManager.isAdmin();
+
+        Map<String, Object> data = new HashMap<>();
+        data.put("fcmToken", fcmToken);
+        data.put("isAdmin", isAdmin);
+        data.put("updatedAt", Timestamp.now());
+
+        db.collection(COLLECTION_USERS)
+                .document(userId)
+                .set(data)
+                .addOnSuccessListener(aVoid -> callback.onSuccess(null))
+                .addOnFailureListener(callback::onFailure);
+    }
+
+    /**
+     * 모든 관리자의 FCM 토큰 조회
+     */
+    public void getAdminFCMTokens(FirestoreCallback<List<String>> callback) {
+        db.collection(COLLECTION_USERS)
+                .whereEqualTo("isAdmin", true)
+                .get()
+                .addOnSuccessListener(querySnapshot -> {
+                    List<String> tokens = new ArrayList<>();
+                    for (DocumentSnapshot doc : querySnapshot.getDocuments()) {
+                        String token = doc.getString("fcmToken");
+                        if (token != null && !token.isEmpty()) {
+                            tokens.add(token);
+                        }
+                    }
+                    callback.onSuccess(tokens);
+                })
+                .addOnFailureListener(callback::onFailure);
     }
 
     // ==================== Callback Interface ====================
