@@ -30,7 +30,7 @@ public class FirestoreManager {
     private static final String COLLECTION_ROOMS = "rooms";
     private static final String COLLECTION_RESERVATIONS = "reservations";
     private static final String COLLECTION_TIMETABLE = "timetable";
-    private static final String COLLECTION_USERS = "users";
+    private static final String COLLECTION_NOTIFICATIONS = "notifications";
 
     private FirestoreManager() {
         db = FirebaseFirestore.getInstance();
@@ -745,51 +745,99 @@ public class FirestoreManager {
         return data;
     }
 
-    // ==================== FCM Token Management ====================
+    // ==================== Notification Management ====================
 
     /**
-     * FCM 토큰 저장/업데이트
+     * 관리자용 알림 생성
      */
-    public void updateFCMToken(String fcmToken, FirestoreCallback<Void> callback) {
-        AuthManager authManager = AuthManager.getInstance();
-        if (authManager.currentUser() == null) {
-            callback.onFailure(new Exception("User not logged in"));
-            return;
-        }
-
-        String userId = authManager.currentUser().getUid();
-        boolean isAdmin = authManager.isAdmin();
-
+    public void createNotification(String title, String message, String type, String relatedId, FirestoreCallback<Void> callback) {
         Map<String, Object> data = new HashMap<>();
-        data.put("fcmToken", fcmToken);
-        data.put("isAdmin", isAdmin);
-        data.put("updatedAt", Timestamp.now());
+        data.put("title", title);
+        data.put("message", message);
+        data.put("type", type); // "reservation", "room", "timetable"
+        data.put("targetUserId", "admin");
+        data.put("timestamp", Timestamp.now());
+        data.put("read", false);
+        data.put("relatedId", relatedId);
 
-        db.collection(COLLECTION_USERS)
-                .document(userId)
-                .set(data)
+        db.collection(COLLECTION_NOTIFICATIONS)
+                .add(data)
+                .addOnSuccessListener(documentReference -> callback.onSuccess(null))
+                .addOnFailureListener(callback::onFailure);
+    }
+
+    /**
+     * 관리자용 알림 목록 조회 (실시간 리스너)
+     */
+    public ListenerRegistration listenToAdminNotifications(FirestoreCallback<List<com.example.bangbillija.model.Notification>> callback) {
+        return db.collection(COLLECTION_NOTIFICATIONS)
+                .whereEqualTo("targetUserId", "admin")
+                .orderBy("timestamp", Query.Direction.DESCENDING)
+                .addSnapshotListener((querySnapshot, error) -> {
+                    if (error != null) {
+                        callback.onFailure(error);
+                        return;
+                    }
+
+                    if (querySnapshot != null) {
+                        List<com.example.bangbillija.model.Notification> notifications = new ArrayList<>();
+                        for (DocumentSnapshot doc : querySnapshot.getDocuments()) {
+                            com.example.bangbillija.model.Notification notification = mapToNotification(doc);
+                            if (notification != null) {
+                                notifications.add(notification);
+                            }
+                        }
+                        callback.onSuccess(notifications);
+                    }
+                });
+    }
+
+    /**
+     * 알림 읽음 처리
+     */
+    public void markNotificationAsRead(String notificationId, FirestoreCallback<Void> callback) {
+        db.collection(COLLECTION_NOTIFICATIONS)
+                .document(notificationId)
+                .update("read", true)
                 .addOnSuccessListener(aVoid -> callback.onSuccess(null))
                 .addOnFailureListener(callback::onFailure);
     }
 
     /**
-     * 모든 관리자의 FCM 토큰 조회
+     * DocumentSnapshot을 Notification 객체로 변환
      */
-    public void getAdminFCMTokens(FirestoreCallback<List<String>> callback) {
-        db.collection(COLLECTION_USERS)
-                .whereEqualTo("isAdmin", true)
-                .get()
-                .addOnSuccessListener(querySnapshot -> {
-                    List<String> tokens = new ArrayList<>();
-                    for (DocumentSnapshot doc : querySnapshot.getDocuments()) {
-                        String token = doc.getString("fcmToken");
-                        if (token != null && !token.isEmpty()) {
-                            tokens.add(token);
-                        }
-                    }
-                    callback.onSuccess(tokens);
-                })
-                .addOnFailureListener(callback::onFailure);
+    private com.example.bangbillija.model.Notification mapToNotification(DocumentSnapshot doc) {
+        try {
+            String id = doc.getId();
+            String title = doc.getString("title");
+            String message = doc.getString("message");
+            String type = doc.getString("type");
+            String targetUserId = doc.getString("targetUserId");
+            Timestamp timestamp = doc.getTimestamp("timestamp");
+            Boolean read = doc.getBoolean("read");
+            String relatedId = doc.getString("relatedId");
+
+            if (title == null || message == null || type == null || targetUserId == null || timestamp == null || read == null) {
+                return null;
+            }
+
+            java.time.LocalDateTime localDateTime = Instant.ofEpochMilli(timestamp.toDate().getTime())
+                    .atZone(ZoneId.systemDefault())
+                    .toLocalDateTime();
+
+            return new com.example.bangbillija.model.Notification(
+                    id,
+                    title,
+                    message,
+                    type,
+                    targetUserId,
+                    localDateTime,
+                    read,
+                    relatedId
+            );
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     // ==================== Callback Interface ====================

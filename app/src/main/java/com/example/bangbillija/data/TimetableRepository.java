@@ -94,6 +94,29 @@ public class TimetableRepository {
         firestoreManager.addTimetableEntry(entry, new FirestoreManager.FirestoreCallback<Void>() {
             @Override
             public void onSuccess(Void result) {
+                // 관리자에게 알림 생성
+                String title = "새로운 시간표 등록";
+                String message = String.format("%s - %s(%s) %s %s~%s",
+                        entry.getRoomName(),
+                        entry.getCourseName(),
+                        entry.getCourseCode(),
+                        entry.getDayOfWeek(),
+                        entry.getStartTime(),
+                        entry.getEndTime());
+
+                firestoreManager.createNotification(title, message, "timetable", entry.getEntryId(), new FirestoreManager.FirestoreCallback<Void>() {
+                    @Override
+                    public void onSuccess(Void notifResult) {
+                        // 알림 생성 성공 (무시 가능)
+                    }
+
+                    @Override
+                    public void onFailure(Exception e) {
+                        // 알림 생성 실패해도 시간표는 성공했으므로 로그만 남김
+                        error.setValue("알림 생성 실패: " + e.getMessage());
+                    }
+                });
+
                 // 실시간 리스너가 자동으로 업데이트
                 callback.onSuccess(result);
             }
@@ -110,6 +133,23 @@ public class TimetableRepository {
         firestoreManager.addTimetableEntries(entries, new FirestoreManager.FirestoreCallback<Void>() {
             @Override
             public void onSuccess(Void result) {
+                // 관리자에게 알림 생성
+                String title = "시간표 일괄 등록";
+                String message = String.format("%d개의 시간표 항목이 등록되었습니다.", entries.size());
+
+                firestoreManager.createNotification(title, message, "timetable", "", new FirestoreManager.FirestoreCallback<Void>() {
+                    @Override
+                    public void onSuccess(Void notifResult) {
+                        // 알림 생성 성공 (무시 가능)
+                    }
+
+                    @Override
+                    public void onFailure(Exception e) {
+                        // 알림 생성 실패해도 시간표는 성공했으므로 로그만 남김
+                        error.setValue("알림 생성 실패: " + e.getMessage());
+                    }
+                });
+
                 // 실시간 리스너가 자동으로 업데이트
                 callback.onSuccess(result);
             }

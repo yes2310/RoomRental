@@ -220,6 +220,27 @@ public class ReservationRepository {
         firestoreManager.createReservation(reservation, userId, userEmail, new FirestoreManager.FirestoreCallback<String>() {
             @Override
             public void onSuccess(String documentId) {
+                // 관리자에게 알림 생성
+                String title = "새로운 예약";
+                String message = String.format("%s님이 %s %s~%s 예약을 생성했습니다.",
+                        userEmail,
+                        reservation.getDate(),
+                        reservation.getStartTime(),
+                        reservation.getEndTime());
+
+                firestoreManager.createNotification(title, message, "reservation", documentId, new FirestoreManager.FirestoreCallback<Void>() {
+                    @Override
+                    public void onSuccess(Void result) {
+                        // 알림 생성 성공 (무시 가능)
+                    }
+
+                    @Override
+                    public void onFailure(Exception e) {
+                        // 알림 생성 실패해도 예약은 성공했으므로 로그만 남김
+                        error.setValue("알림 생성 실패: " + e.getMessage());
+                    }
+                });
+
                 // 실시간 리스너가 자동으로 업데이트
                 callback.onSuccess(documentId);
             }

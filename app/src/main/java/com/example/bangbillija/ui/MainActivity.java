@@ -13,9 +13,7 @@ import androidx.lifecycle.ViewModelProvider;
 import com.example.bangbillija.R;
 import com.example.bangbillija.core.SharedReservationViewModel;
 import com.example.bangbillija.service.AuthManager;
-import com.example.bangbillija.service.FirestoreManager;
 import com.example.bangbillija.ui.calendar.CalendarFragment;
-import com.google.firebase.messaging.FirebaseMessaging;
 import com.example.bangbillija.ui.checkin.QrCheckInFragment;
 import com.example.bangbillija.ui.reservations.CreateReservationFragment;
 import com.example.bangbillija.ui.reservations.MyReservationsFragment;
@@ -96,9 +94,6 @@ public class MainActivity extends AppCompatActivity implements Navigator {
         });
 
         getSupportFragmentManager().addOnBackStackChangedListener(this::syncToolbarWithBackStack);
-
-        // FCM 토큰 초기화 및 저장
-        initializeFCM();
 
         if (savedInstanceState == null) {
             bottomNavigationView.setSelectedItemId(R.id.menu_rooms);
@@ -252,33 +247,6 @@ public class MainActivity extends AppCompatActivity implements Navigator {
         intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
         startActivity(intent);
         finish();
-    }
-
-    private void initializeFCM() {
-        FirebaseMessaging.getInstance().getToken()
-                .addOnCompleteListener(task -> {
-                    if (!task.isSuccessful()) {
-                        android.util.Log.w("MainActivity", "FCM token retrieval failed", task.getException());
-                        return;
-                    }
-
-                    // FCM 토큰 가져오기 성공
-                    String token = task.getResult();
-                    android.util.Log.d("MainActivity", "FCM token: " + token);
-
-                    // Firestore에 저장
-                    FirestoreManager.getInstance().updateFCMToken(token, new FirestoreManager.FirestoreCallback<Void>() {
-                        @Override
-                        public void onSuccess(Void result) {
-                            android.util.Log.d("MainActivity", "FCM token saved to Firestore");
-                        }
-
-                        @Override
-                        public void onFailure(Exception e) {
-                            android.util.Log.e("MainActivity", "Failed to save FCM token", e);
-                        }
-                    });
-                });
     }
 
     private void checkAndShowWelcomeMessage() {
