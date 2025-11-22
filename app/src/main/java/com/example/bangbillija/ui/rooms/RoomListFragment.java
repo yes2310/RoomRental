@@ -140,9 +140,9 @@ public class RoomListFragment extends Fragment implements RoomListAdapter.RoomCl
     @Override
     public void onRoomClicked(Room room) {
         if (getActivity() instanceof Navigator) {
-            // 관리자는 수정 화면으로, 일반 사용자는 예약 화면으로 이동
+            // 관리자는 관리 메뉴 표시, 일반 사용자는 예약 화면으로 이동
             if (authManager.isAdmin()) {
-                ((Navigator) getActivity()).openEditRoom(room);
+                showAdminMenuDialog(room);
             } else {
                 viewModel.selectRoom(room);
                 viewModel.focusReservation(null);
@@ -162,15 +162,20 @@ public class RoomListFragment extends Fragment implements RoomListAdapter.RoomCl
     }
 
     private void showAdminMenuDialog(Room room) {
-        String[] options = {"QR 코드 생성", "강의실 삭제"};
+        String[] options = {"강의실 수정", "QR 코드 생성", "강의실 삭제"};
 
         new MaterialAlertDialogBuilder(requireContext())
                 .setTitle(room.getName() + " 관리")
                 .setItems(options, (dialog, which) -> {
                     if (which == 0) {
+                        // 강의실 수정
+                        if (getActivity() instanceof Navigator) {
+                            ((Navigator) getActivity()).openEditRoom(room);
+                        }
+                    } else if (which == 1) {
                         // QR 코드 생성
                         showRoomQRCodeDialog(room);
-                    } else if (which == 1) {
+                    } else if (which == 2) {
                         // 강의실 삭제
                         showDeleteRoomConfirmDialog(room);
                     }
