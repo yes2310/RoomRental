@@ -5,6 +5,7 @@ import androidx.lifecycle.MutableLiveData;
 
 import com.example.bangbillija.model.Room;
 import com.example.bangbillija.service.FirestoreManager;
+import com.google.firebase.firestore.ListenerRegistration;
 
 import java.util.List;
 
@@ -14,9 +15,10 @@ public class RoomRepository {
     private final FirestoreManager firestoreManager = FirestoreManager.getInstance();
     private final MutableLiveData<List<Room>> rooms = new MutableLiveData<>();
     private final MutableLiveData<String> error = new MutableLiveData<>();
+    private ListenerRegistration roomsListener;
 
     private RoomRepository() {
-        loadRooms();
+        startListening();
     }
 
     public static synchronized RoomRepository getInstance() {
@@ -34,8 +36,15 @@ public class RoomRepository {
         return error;
     }
 
-    public void loadRooms() {
-        firestoreManager.getAllRooms(new FirestoreManager.FirestoreCallback<List<Room>>() {
+    /**
+     * 실시간 리스너 시작 (다른 사용자의 변경사항 자동 반영)
+     */
+    private void startListening() {
+        if (roomsListener != null) {
+            roomsListener.remove();
+        }
+
+        roomsListener = firestoreManager.listenToRooms(new FirestoreManager.FirestoreCallback<List<Room>>() {
             @Override
             public void onSuccess(List<Room> result) {
                 rooms.setValue(result);
@@ -50,15 +59,36 @@ public class RoomRepository {
         });
     }
 
+    /**
+     * 리스너 해제 (필요 시 호출)
+     */
+    public void stopListening() {
+        if (roomsListener != null) {
+            roomsListener.remove();
+            roomsListener = null;
+        }
+    }
+
+    public void loadRooms() {
+        // 실시간 리스너가 이미 실행 중이므로 별도 조회 불필요
+        // 필요 시 리스너 재시작
+        if (roomsListener == null) {
+            startListening();
+        }
+    }
+
     public void refresh() {
-        loadRooms();
+        // 실시간 리스너가 자동으로 최신 데이터 반영
+        // 필요 시 리스너 재시작
+        stopListening();
+        startListening();
     }
 
     public void addRoom(Room room, FirestoreManager.FirestoreCallback<Void> callback) {
         firestoreManager.addRoom(room, new FirestoreManager.FirestoreCallback<Void>() {
             @Override
             public void onSuccess(Void result) {
-                loadRooms(); // Refresh list after adding
+                // 실시간 리스너가 자동으로 업데이트
                 callback.onSuccess(result);
             }
 
@@ -74,7 +104,7 @@ public class RoomRepository {
         firestoreManager.updateRoom(room, new FirestoreManager.FirestoreCallback<Void>() {
             @Override
             public void onSuccess(Void result) {
-                loadRooms(); // Refresh list after updating
+                // 실시간 리스너가 자동으로 업데이트
                 callback.onSuccess(result);
             }
 
@@ -90,7 +120,7 @@ public class RoomRepository {
         firestoreManager.deleteRoom(roomId, new FirestoreManager.FirestoreCallback<Void>() {
             @Override
             public void onSuccess(Void result) {
-                loadRooms(); // Refresh list after deleting
+                // 실시간 리스너가 자동으로 업데이트
                 callback.onSuccess(result);
             }
 

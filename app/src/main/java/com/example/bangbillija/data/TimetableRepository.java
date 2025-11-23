@@ -5,6 +5,7 @@ import androidx.lifecycle.MutableLiveData;
 
 import com.example.bangbillija.model.TimetableEntry;
 import com.example.bangbillija.service.FirestoreManager;
+import com.google.firebase.firestore.ListenerRegistration;
 
 import java.time.DayOfWeek;
 import java.util.List;
@@ -15,9 +16,11 @@ public class TimetableRepository {
     private final FirestoreManager firestoreManager = FirestoreManager.getInstance();
     private final MutableLiveData<List<TimetableEntry>> timetableEntries = new MutableLiveData<>();
     private final MutableLiveData<String> error = new MutableLiveData<>();
+    private ListenerRegistration timetableListener;
+    private String currentListeningSemester = null;
 
     private TimetableRepository() {
-        loadTimetable();
+        // 초기에는 리스너를 시작하지 않음 (학기가 선택되면 시작)
     }
 
     public static synchronized TimetableRepository getInstance() {
@@ -35,8 +38,23 @@ public class TimetableRepository {
         return error;
     }
 
+    /**
+     * 리스너 해제 (필요 시 호출)
+     */
+    public void stopListening() {
+        if (timetableListener != null) {
+            timetableListener.remove();
+            timetableListener = null;
+            currentListeningSemester = null;
+        }
+    }
+
     public void loadTimetable() {
-        firestoreManager.getAllTimetableEntries(new FirestoreManager.FirestoreCallback<List<TimetableEntry>>() {
+        // 전체 시간표 실시간 리스너
+        stopListening();
+        currentListeningSemester = null;
+
+        timetableListener = firestoreManager.listenToTimetableEntries(new FirestoreManager.FirestoreCallback<List<TimetableEntry>>() {
             @Override
             public void onSuccess(List<TimetableEntry> result) {
                 timetableEntries.setValue(result);
@@ -50,7 +68,16 @@ public class TimetableRepository {
     }
 
     public void loadTimetableBySemester(String semester) {
-        firestoreManager.getTimetableEntriesBySemester(semester, new FirestoreManager.FirestoreCallback<List<TimetableEntry>>() {
+        // 이미 같은 학기를 듣고 있으면 리스너를 재시작하지 않음
+        if (semester.equals(currentListeningSemester) && timetableListener != null) {
+            return;
+        }
+
+        // 학기별 시간표 실시간 리스너
+        stopListening();
+        currentListeningSemester = semester;
+
+        timetableListener = firestoreManager.listenToTimetableEntriesBySemester(semester, new FirestoreManager.FirestoreCallback<List<TimetableEntry>>() {
             @Override
             public void onSuccess(List<TimetableEntry> result) {
                 timetableEntries.setValue(result);
@@ -67,7 +94,7 @@ public class TimetableRepository {
         firestoreManager.addTimetableEntry(entry, new FirestoreManager.FirestoreCallback<Void>() {
             @Override
             public void onSuccess(Void result) {
-                loadTimetable(); // Refresh list after adding
+                // 실시간 리스너가 자동으로 업데이트
                 callback.onSuccess(result);
             }
 
@@ -83,7 +110,7 @@ public class TimetableRepository {
         firestoreManager.addTimetableEntries(entries, new FirestoreManager.FirestoreCallback<Void>() {
             @Override
             public void onSuccess(Void result) {
-                loadTimetable(); // Refresh list after adding
+                // 실시간 리스너가 자동으로 업데이트
                 callback.onSuccess(result);
             }
 
@@ -99,7 +126,7 @@ public class TimetableRepository {
         firestoreManager.deleteTimetableEntry(entryId, new FirestoreManager.FirestoreCallback<Void>() {
             @Override
             public void onSuccess(Void result) {
-                loadTimetable(); // Refresh list after deleting
+                // 실시간 리스너가 자동으로 업데이트
                 callback.onSuccess(result);
             }
 
@@ -115,7 +142,7 @@ public class TimetableRepository {
         firestoreManager.deleteAllTimetableEntries(new FirestoreManager.FirestoreCallback<Void>() {
             @Override
             public void onSuccess(Void result) {
-                loadTimetable(); // Refresh list after deleting all
+                // 실시간 리스너가 자동으로 업데이트
                 callback.onSuccess(result);
             }
 
@@ -152,6 +179,10 @@ public class TimetableRepository {
     }
 
     public void refresh() {
-        loadTimetable();
+        // 실시간 리스너가 자동으로 업데이트하므로 별도 리프레시 불필요
+        // 필요 시 리스너 재시작
+        if (timetableListener == null) {
+            loadTimetable();
+        }
     }
 }

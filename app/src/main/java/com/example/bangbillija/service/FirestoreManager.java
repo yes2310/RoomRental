@@ -8,6 +8,7 @@ import com.example.bangbillija.model.TimetableEntry;
 import com.google.firebase.Timestamp;
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.ListenerRegistration;
 import com.google.firebase.firestore.Query;
 
 import java.time.DayOfWeek;
@@ -57,6 +58,31 @@ public class FirestoreManager {
                     callback.onSuccess(rooms);
                 })
                 .addOnFailureListener(callback::onFailure);
+    }
+
+    /**
+     * 강의실 실시간 리스너 (다른 사용자의 변경사항 즉시 반영)
+     * @return ListenerRegistration (해제 시 remove() 호출)
+     */
+    public ListenerRegistration listenToRooms(FirestoreCallback<List<Room>> callback) {
+        return db.collection(COLLECTION_ROOMS)
+                .addSnapshotListener((querySnapshot, error) -> {
+                    if (error != null) {
+                        callback.onFailure(error);
+                        return;
+                    }
+
+                    if (querySnapshot != null) {
+                        List<Room> rooms = new ArrayList<>();
+                        for (DocumentSnapshot doc : querySnapshot.getDocuments()) {
+                            Room room = documentToRoom(doc);
+                            if (room != null) {
+                                rooms.add(room);
+                            }
+                        }
+                        callback.onSuccess(rooms);
+                    }
+                });
     }
 
     public void addRoom(Room room, FirestoreCallback<Void> callback) {
@@ -238,6 +264,31 @@ public class FirestoreManager {
                 .addOnFailureListener(callback::onFailure);
     }
 
+    /**
+     * 예약 실시간 리스너 (다른 사용자의 변경사항 즉시 반영)
+     * @return ListenerRegistration (해제 시 remove() 호출)
+     */
+    public ListenerRegistration listenToReservations(FirestoreCallback<List<Reservation>> callback) {
+        return db.collection(COLLECTION_RESERVATIONS)
+                .addSnapshotListener((querySnapshot, error) -> {
+                    if (error != null) {
+                        callback.onFailure(error);
+                        return;
+                    }
+
+                    if (querySnapshot != null) {
+                        List<Reservation> reservations = new ArrayList<>();
+                        for (DocumentSnapshot doc : querySnapshot.getDocuments()) {
+                            Reservation reservation = documentToReservation(doc);
+                            if (reservation != null) {
+                                reservations.add(reservation);
+                            }
+                        }
+                        callback.onSuccess(reservations);
+                    }
+                });
+    }
+
     public void getReservationsByRoomAndDate(String roomId, LocalDate date, FirestoreCallback<List<Reservation>> callback) {
         // Convert LocalDate to String for Firestore query (dates are stored as strings)
         String dateStr = date.toString();
@@ -323,6 +374,31 @@ public class FirestoreManager {
                 .addOnFailureListener(callback::onFailure);
     }
 
+    /**
+     * 시간표 실시간 리스너 (다른 사용자의 변경사항 즉시 반영)
+     * @return ListenerRegistration (해제 시 remove() 호출)
+     */
+    public ListenerRegistration listenToTimetableEntries(FirestoreCallback<List<TimetableEntry>> callback) {
+        return db.collection(COLLECTION_TIMETABLE)
+                .addSnapshotListener((querySnapshot, error) -> {
+                    if (error != null) {
+                        callback.onFailure(error);
+                        return;
+                    }
+
+                    if (querySnapshot != null) {
+                        List<TimetableEntry> entries = new ArrayList<>();
+                        for (DocumentSnapshot doc : querySnapshot.getDocuments()) {
+                            TimetableEntry entry = documentToTimetableEntry(doc);
+                            if (entry != null) {
+                                entries.add(entry);
+                            }
+                        }
+                        callback.onSuccess(entries);
+                    }
+                });
+    }
+
     public void getTimetableEntriesForRoom(String roomId, FirestoreCallback<List<TimetableEntry>> callback) {
         db.collection(COLLECTION_TIMETABLE)
                 .whereEqualTo("roomId", roomId)
@@ -396,6 +472,32 @@ public class FirestoreManager {
                     callback.onSuccess(entries);
                 })
                 .addOnFailureListener(callback::onFailure);
+    }
+
+    /**
+     * 학기별 시간표 실시간 리스너 (다른 사용자의 변경사항 즉시 반영)
+     * @return ListenerRegistration (해제 시 remove() 호출)
+     */
+    public ListenerRegistration listenToTimetableEntriesBySemester(String semester, FirestoreCallback<List<TimetableEntry>> callback) {
+        return db.collection(COLLECTION_TIMETABLE)
+                .whereEqualTo("semester", semester)
+                .addSnapshotListener((querySnapshot, error) -> {
+                    if (error != null) {
+                        callback.onFailure(error);
+                        return;
+                    }
+
+                    if (querySnapshot != null) {
+                        List<TimetableEntry> entries = new ArrayList<>();
+                        for (DocumentSnapshot doc : querySnapshot.getDocuments()) {
+                            TimetableEntry entry = documentToTimetableEntry(doc);
+                            if (entry != null) {
+                                entries.add(entry);
+                            }
+                        }
+                        callback.onSuccess(entries);
+                    }
+                });
     }
 
     public void deleteTimetableEntriesBySemester(String semester, FirestoreCallback<Void> callback) {

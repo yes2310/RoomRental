@@ -11,6 +11,7 @@ import com.example.bangbillija.service.AuthManager;
 import com.example.bangbillija.service.FirestoreManager;
 import com.example.bangbillija.service.SlotEngine;
 import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.firestore.ListenerRegistration;
 
 import java.time.LocalDate;
 import java.util.HashMap;
@@ -29,9 +30,10 @@ public class ReservationRepository {
     private final MutableLiveData<List<Reservation>> pastReservations = new MutableLiveData<>();
     private final MutableLiveData<List<Reservation>> cancelledReservations = new MutableLiveData<>();
     private final MutableLiveData<String> error = new MutableLiveData<>();
+    private ListenerRegistration reservationsListener;
 
     private ReservationRepository() {
-        loadReservations();
+        startListening();
     }
 
     public static synchronized ReservationRepository getInstance() {
@@ -91,28 +93,33 @@ public class ReservationRepository {
         return error;
     }
 
-    public void loadReservations() {
-        FirebaseUser user = authManager.currentUser();
-        if (user == null) {
-            return;
-        }
-
-        // 관리자인 경우 모든 예약 로드, 일반 사용자는 자신의 예약만 로드
-        if (authManager.isAdmin()) {
-            loadAllReservations();
-        } else {
-            loadUserReservations(user.getUid());
-        }
-    }
-
     /**
-     * 관리자용: 모든 사용자의 예약을 로드합니다.
+     * 실시간 리스너 시작 (다른 사용자의 변경사항 자동 반영)
      */
-    private void loadAllReservations() {
-        firestoreManager.getAllReservations(new FirestoreManager.FirestoreCallback<List<Reservation>>() {
+    private void startListening() {
+        if (reservationsListener != null) {
+            reservationsListener.remove();
+        }
+
+        reservationsListener = firestoreManager.listenToReservations(new FirestoreManager.FirestoreCallback<List<Reservation>>() {
             @Override
             public void onSuccess(List<Reservation> allReservations) {
-                processAndSetReservations(allReservations);
+                FirebaseUser user = authManager.currentUser();
+                if (user == null) {
+                    return;
+                }
+
+                // 관리자는 모든 예약, 일반 사용자는 자신의 예약만 필터링
+                List<Reservation> filteredReservations;
+                if (authManager.isAdmin()) {
+                    filteredReservations = allReservations;
+                } else {
+                    filteredReservations = allReservations.stream()
+                            .filter(r -> r.getOwner().equals(user.getUid()))
+                            .collect(Collectors.toList());
+                }
+
+                processAndSetReservations(filteredReservations);
             }
 
             @Override
@@ -120,6 +127,30 @@ public class ReservationRepository {
                 error.setValue(e.getMessage());
             }
         });
+    }
+
+    /**
+     * 리스너 해제 (필요 시 호출)
+     */
+    public void stopListening() {
+        if (reservationsListener != null) {
+            reservationsListener.remove();
+            reservationsListener = null;
+        }
+    }
+
+    public void loadReservations() {
+        // 실시간 리스너가 이미 실행 중이므로 별도 조회 불필요
+        if (reservationsListener == null) {
+            startListening();
+        }
+    }
+
+    /**
+     * 관리자용: 모든 사용자의 예약을 로드합니다.
+     */
+    private void loadAllReservations() {
+        // 실시간 리스너가 자동으로 처리
     }
 
     /**
@@ -178,14 +209,18 @@ public class ReservationRepository {
     }
 
     public void refresh() {
-        loadReservations();
+        // 실시간 리스너가 자동으로 업데이트하므로 별도 리프레시 불필요
+        // 필요 시 리스너 재시작
+        if (reservationsListener == null) {
+            startListening();
+        }
     }
 
     public void createReservation(Reservation reservation, String userId, String userEmail, FirestoreManager.FirestoreCallback<String> callback) {
         firestoreManager.createReservation(reservation, userId, userEmail, new FirestoreManager.FirestoreCallback<String>() {
             @Override
             public void onSuccess(String documentId) {
-                loadReservations(); // Refresh after creation
+                // 실시간 리스너가 자동으로 업데이트
                 callback.onSuccess(documentId);
             }
 
@@ -201,7 +236,7 @@ public class ReservationRepository {
         firestoreManager.updateReservation(documentId, updates, new FirestoreManager.FirestoreCallback<Void>() {
             @Override
             public void onSuccess(Void result) {
-                loadReservations(); // Refresh after update
+                // 실시간 리스너가 자동으로 업데이트
                 callback.onSuccess(result);
             }
 
@@ -217,7 +252,7 @@ public class ReservationRepository {
         firestoreManager.cancelReservation(documentId, new FirestoreManager.FirestoreCallback<Void>() {
             @Override
             public void onSuccess(Void result) {
-                loadReservations(); // Refresh after cancellation
+                // 실시간 리스너가 자동으로 업데이트
                 callback.onSuccess(result);
             }
 
@@ -233,7 +268,7 @@ public class ReservationRepository {
         firestoreManager.cancelReservationByReservationId(reservationId, new FirestoreManager.FirestoreCallback<Void>() {
             @Override
             public void onSuccess(Void result) {
-                loadReservations(); // Refresh after cancellation
+                // 실시간 리스너가 자동으로 업데이트
                 callback.onSuccess(result);
             }
 
@@ -249,7 +284,7 @@ public class ReservationRepository {
         firestoreManager.updateReservationByReservationId(reservationId, updates, new FirestoreManager.FirestoreCallback<Void>() {
             @Override
             public void onSuccess(Void result) {
-                loadReservations(); // Refresh after update
+                // 실시간 리스너가 자동으로 업데이트
                 callback.onSuccess(result);
             }
 
