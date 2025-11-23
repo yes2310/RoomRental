@@ -14,10 +14,11 @@ public class TimetableEntry {
     private final int attendees;
     private final String professor;
     private final String note;
+    private final String semester; // 학기 정보 (예: "2024-1", "2024-2")
 
     public TimetableEntry(String id, String courseName, String roomId, String roomName,
                           DayOfWeek dayOfWeek, LocalTime startTime, LocalTime endTime,
-                          int attendees, String professor, String note) {
+                          int attendees, String professor, String note, String semester) {
         this.id = id;
         this.courseName = courseName;
         this.roomId = roomId;
@@ -28,6 +29,20 @@ public class TimetableEntry {
         this.attendees = attendees;
         this.professor = professor;
         this.note = note;
+        this.semester = semester != null ? semester : getCurrentSemester();
+    }
+
+    // 현재 학기 자동 계산 (3-8월: 1학기, 9-2월: 2학기)
+    private static String getCurrentSemester() {
+        java.time.LocalDate now = java.time.LocalDate.now();
+        int year = now.getYear();
+        int month = now.getMonthValue();
+
+        if (month >= 3 && month <= 8) {
+            return year + "-1";
+        } else {
+            return year + "-2";
+        }
     }
 
     public String getId() {
@@ -68,6 +83,10 @@ public class TimetableEntry {
 
     public String getNote() {
         return note;
+    }
+
+    public String getSemester() {
+        return semester;
     }
 
     public String getDayOfWeekKorean() {

@@ -20,7 +20,7 @@ public class TimetableCSVParser {
      * CSV 형식: 과목명,강의실ID,강의실명,요일,시작시간,종료시간,수강인원,교수명,비고
      * 예시: 알고리즘,room301,공학관 301호,월,09:00,10:30,40,김교수,중간고사 주의
      */
-    public static List<TimetableEntry> parseCSV(InputStream inputStream) throws IOException, ParseException {
+    public static List<TimetableEntry> parseCSV(InputStream inputStream, String semester) throws IOException, ParseException {
         List<TimetableEntry> entries = new ArrayList<>();
         BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream, StandardCharsets.UTF_8));
 
@@ -43,7 +43,7 @@ public class TimetableCSVParser {
             }
 
             try {
-                TimetableEntry entry = parseLine(line);
+                TimetableEntry entry = parseLine(line, semester);
                 entries.add(entry);
             } catch (Exception e) {
                 throw new ParseException("Line " + lineNumber + ": " + e.getMessage(), lineNumber);
@@ -88,7 +88,7 @@ public class TimetableCSVParser {
         return timeStr;
     }
 
-    private static TimetableEntry parseLine(String line) throws Exception {
+    private static TimetableEntry parseLine(String line, String semester) throws Exception {
         String[] parts = line.split(",");
 
         if (parts.length < 8) {
@@ -139,7 +139,7 @@ public class TimetableCSVParser {
 
         String id = UUID.randomUUID().toString();
         return new TimetableEntry(id, courseName, roomId, roomName, dayOfWeek,
-                startTime, endTime, attendees, professor, note);
+                startTime, endTime, attendees, professor, note, semester);
     }
 
     private static DayOfWeek parseDayOfWeek(String dayStr) throws Exception {

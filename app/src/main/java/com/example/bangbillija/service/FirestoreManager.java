@@ -381,6 +381,57 @@ public class FirestoreManager {
                 .addOnFailureListener(callback::onFailure);
     }
 
+    public void getTimetableEntriesBySemester(String semester, FirestoreCallback<List<TimetableEntry>> callback) {
+        db.collection(COLLECTION_TIMETABLE)
+                .whereEqualTo("semester", semester)
+                .get()
+                .addOnSuccessListener(querySnapshot -> {
+                    List<TimetableEntry> entries = new ArrayList<>();
+                    for (DocumentSnapshot doc : querySnapshot.getDocuments()) {
+                        TimetableEntry entry = documentToTimetableEntry(doc);
+                        if (entry != null) {
+                            entries.add(entry);
+                        }
+                    }
+                    callback.onSuccess(entries);
+                })
+                .addOnFailureListener(callback::onFailure);
+    }
+
+    public void deleteTimetableEntriesBySemester(String semester, FirestoreCallback<Void> callback) {
+        db.collection(COLLECTION_TIMETABLE)
+                .whereEqualTo("semester", semester)
+                .get()
+                .addOnSuccessListener(querySnapshot -> {
+                    com.google.firebase.firestore.WriteBatch batch = db.batch();
+                    for (DocumentSnapshot doc : querySnapshot.getDocuments()) {
+                        batch.delete(doc.getReference());
+                    }
+                    batch.commit()
+                            .addOnSuccessListener(aVoid -> callback.onSuccess(null))
+                            .addOnFailureListener(callback::onFailure);
+                })
+                .addOnFailureListener(callback::onFailure);
+    }
+
+    public void getAllSemesters(FirestoreCallback<List<String>> callback) {
+        db.collection(COLLECTION_TIMETABLE)
+                .get()
+                .addOnSuccessListener(querySnapshot -> {
+                    java.util.Set<String> semestersSet = new java.util.HashSet<>();
+                    for (DocumentSnapshot doc : querySnapshot.getDocuments()) {
+                        String semester = doc.getString("semester");
+                        if (semester != null && !semester.isEmpty()) {
+                            semestersSet.add(semester);
+                        }
+                    }
+                    List<String> semesters = new ArrayList<>(semestersSet);
+                    java.util.Collections.sort(semesters, java.util.Collections.reverseOrder());
+                    callback.onSuccess(semesters);
+                })
+                .addOnFailureListener(callback::onFailure);
+    }
+
     // ==================== Conversion Utilities ====================
 
     private Room documentToRoom(DocumentSnapshot doc) {
@@ -495,12 +546,13 @@ public class FirestoreManager {
             int attendees = attendeesLong != null ? attendeesLong.intValue() : 0;
             String professor = doc.getString("professor");
             String note = doc.getString("note");
+            String semester = doc.getString("semester");
 
             DayOfWeek dayOfWeek = DayOfWeek.valueOf(dayOfWeekStr);
             LocalTime startTime = LocalTime.parse(startTimeStr);
             LocalTime endTime = LocalTime.parse(endTimeStr);
 
-            return new TimetableEntry(id, courseName, roomId, roomName, dayOfWeek, startTime, endTime, attendees, professor, note);
+            return new TimetableEntry(id, courseName, roomId, roomName, dayOfWeek, startTime, endTime, attendees, professor, note, semester);
         } catch (Exception e) {
             e.printStackTrace();
             return null;
@@ -519,6 +571,7 @@ public class FirestoreManager {
         data.put("attendees", entry.getAttendees());
         data.put("professor", entry.getProfessor() != null ? entry.getProfessor() : "");
         data.put("note", entry.getNote() != null ? entry.getNote() : "");
+        data.put("semester", entry.getSemester());
         data.put("createdAt", Timestamp.now());
         data.put("updatedAt", Timestamp.now());
         return data;
