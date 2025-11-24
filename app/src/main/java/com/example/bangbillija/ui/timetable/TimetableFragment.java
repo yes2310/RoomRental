@@ -69,13 +69,15 @@ public class TimetableFragment extends Fragment {
     private LocalTime selectedStartTime;
     private LocalTime selectedEndTime;
 
+    private String currentSemester;  // 현재 선택된 학기
+
     private final ActivityResultLauncher<Intent> filePickerLauncher = registerForActivityResult(
             new ActivityResultContracts.StartActivityForResult(),
             result -> {
                 if (result.getResultCode() == android.app.Activity.RESULT_OK && result.getData() != null) {
                     Uri uri = result.getData().getData();
                     if (uri != null) {
-                        parseCSVFile(uri);
+                        showSemesterSelectionDialog(uri);
                     }
                 }
             }
@@ -222,10 +224,47 @@ public class TimetableFragment extends Fragment {
         filePickerLauncher.launch(Intent.createChooser(intent, "CSV 파일 선택"));
     }
 
-    private void parseCSVFile(Uri uri) {
+    private void showSemesterSelectionDialog(Uri uri) {
+        // 학기 입력 다이얼로그
+        View dialogView = getLayoutInflater().inflate(R.layout.dialog_semester_input, null);
+        TextInputEditText inputSemester = dialogView.findViewById(R.id.inputSemester);
+
+        // 기본값: 현재 학기
+        String defaultSemester = getCurrentSemester();
+        inputSemester.setText(defaultSemester);
+
+        new com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
+                .setTitle("학기 선택")
+                .setMessage("업로드할 시간표의 학기를 입력하세요\n(예: 2024-1, 2024-2)")
+                .setView(dialogView)
+                .setPositiveButton("업로드", (dialog, which) -> {
+                    String semester = inputSemester.getText() != null ?
+                            inputSemester.getText().toString().trim() : defaultSemester;
+                    if (semester.isEmpty()) {
+                        semester = defaultSemester;
+                    }
+                    parseCSVFile(uri, semester);
+                })
+                .setNegativeButton("취소", null)
+                .show();
+    }
+
+    private String getCurrentSemester() {
+        java.time.LocalDate now = java.time.LocalDate.now();
+        int year = now.getYear();
+        int month = now.getMonthValue();
+
+        if (month >= 3 && month <= 8) {
+            return year + "-1";
+        } else {
+            return year + "-2";
+        }
+    }
+
+    private void parseCSVFile(Uri uri, String semester) {
         try {
             InputStream inputStream = requireContext().getContentResolver().openInputStream(uri);
-            List<TimetableEntry> entries = TimetableCSVParser.parseCSV(inputStream);
+            List<TimetableEntry> entries = TimetableCSVParser.parseCSV(inputStream, semester);
 
             // 1단계: CSV에서 강의실 정보 추출 및 자동 등록
             autoRegisterRoomsFromTimetable(entries);
