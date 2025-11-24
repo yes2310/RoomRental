@@ -52,6 +52,11 @@ public class CalendarFragment extends Fragment {
         viewModel = new ViewModelProvider(requireActivity()).get(SharedReservationViewModel.class);
         authManager = AuthManager.getInstance();
 
+        // Rooms 데이터 로드를 위해 observe
+        viewModel.getRooms().observe(getViewLifecycleOwner(), rooms -> {
+            // Rooms 데이터가 로드되면 자동으로 업데이트됨
+        });
+
         setupRecyclerView();
         setupCalendar();
         loadReservations();
