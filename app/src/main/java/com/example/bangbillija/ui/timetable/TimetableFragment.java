@@ -48,6 +48,8 @@ public class TimetableFragment extends Fragment {
 
     private MaterialButton buttonDownloadTemplate;
     private MaterialButton buttonUploadCSV;
+    private MaterialButton buttonSelectSemester;
+    private MaterialButton buttonDeleteSemester;
     private MaterialButton buttonAddCourse;
     private TextInputEditText inputCourseName;
     private TextInputEditText inputRoom;
@@ -96,17 +98,27 @@ public class TimetableFragment extends Fragment {
         roomRepository = RoomRepository.getInstance();
         timetableRepository = TimetableRepository.getInstance();
 
+        // 현재 학기로 초기화
+        currentSemester = getCurrentSemester();
+
         initViews(view);
         setupRecyclerView();
         setupListeners();
         loadRooms();
         loadTimetable();
         updateEmptyState();
+
+        // 학기 버튼 텍스트 업데이트
+        if (buttonSelectSemester != null) {
+            buttonSelectSemester.setText(currentSemester);
+        }
     }
 
     private void initViews(View view) {
         buttonDownloadTemplate = view.findViewById(R.id.buttonDownloadTemplate);
         buttonUploadCSV = view.findViewById(R.id.buttonUploadCSV);
+        buttonSelectSemester = view.findViewById(R.id.buttonSelectSemester);
+        buttonDeleteSemester = view.findViewById(R.id.buttonDeleteSemester);
         buttonAddCourse = view.findViewById(R.id.buttonAddCourse);
         inputCourseName = view.findViewById(R.id.inputCourseName);
         inputRoom = view.findViewById(R.id.inputRoom);
@@ -130,6 +142,8 @@ public class TimetableFragment extends Fragment {
     private void setupListeners() {
         buttonDownloadTemplate.setOnClickListener(v -> downloadTemplate());
         buttonUploadCSV.setOnClickListener(v -> openFilePicker());
+        buttonSelectSemester.setOnClickListener(v -> showSemesterPicker());
+        buttonDeleteSemester.setOnClickListener(v -> handleDeleteSemester());
         buttonAddCourse.setOnClickListener(v -> handleAddCourse());
 
         inputRoom.setOnClickListener(v -> showRoomPicker());
@@ -147,6 +161,11 @@ public class TimetableFragment extends Fragment {
     }
 
     private void loadTimetable() {
+        // 현재 학기의 시간표만 로드
+        if (currentSemester != null && !currentSemester.isEmpty()) {
+            timetableRepository.loadTimetableBySemester(currentSemester);
+        }
+
         timetableRepository.getTimetableEntries().observe(getViewLifecycleOwner(), entries -> {
             if (entries != null) {
                 adapter.setEntries(entries);
@@ -452,6 +471,73 @@ public class TimetableFragment extends Fragment {
         ).show();
     }
 
+    private void showSemesterPicker() {
+        // 사용 가능한 학기 목록 로드
+        timetableRepository.getAllSemesters(new FirestoreManager.FirestoreCallback<List<String>>() {
+            @Override
+            public void onSuccess(List<String> semesters) {
+                if (semesters.isEmpty()) {
+                    Toast.makeText(requireContext(), "등록된 시간표가 없습니다", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+
+                // 학기 선택 다이얼로그
+                String[] semesterArray = semesters.toArray(new String[0]);
+                int currentIndex = semesters.indexOf(currentSemester);
+                if (currentIndex < 0) {
+                    currentIndex = 0;
+                }
+
+                new AlertDialog.Builder(requireContext())
+                        .setTitle("학기 선택")
+                        .setSingleChoiceItems(semesterArray, currentIndex, (dialog, which) -> {
+                            currentSemester = semesterArray[which];
+                            buttonSelectSemester.setText(currentSemester);
+                            timetableRepository.loadTimetableBySemester(currentSemester);
+                            dialog.dismiss();
+                        })
+                        .setNegativeButton("취소", null)
+                        .show();
+            }
+
+            @Override
+            public void onFailure(Exception e) {
+                Toast.makeText(requireContext(), "학기 목록 로드 실패: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
+    private void handleDeleteSemester() {
+        if (currentSemester == null || currentSemester.isEmpty()) {
+            Toast.makeText(requireContext(), "선택된 학기가 없습니다", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        new AlertDialog.Builder(requireContext())
+                .setTitle("학기 삭제")
+                .setMessage("'" + currentSemester + "' 학기의 모든 시간표를 삭제하시겠습니까?\n\n" +
+                        "⚠️ 이 작업은 되돌릴 수 없습니다.")
+                .setPositiveButton("삭제", (dialog, which) -> {
+                    timetableRepository.deleteTimetableBySemester(currentSemester, new FirestoreManager.FirestoreCallback<Void>() {
+                        @Override
+                        public void onSuccess(Void result) {
+                            Toast.makeText(requireContext(), currentSemester + " 학기가 삭제되었습니다", Toast.LENGTH_SHORT).show();
+                            // 현재 학기로 재설정
+                            currentSemester = getCurrentSemester();
+                            buttonSelectSemester.setText(currentSemester);
+                            timetableRepository.loadTimetableBySemester(currentSemester);
+                        }
+
+                        @Override
+                        public void onFailure(Exception e) {
+                            Toast.makeText(requireContext(), "삭제 실패: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                        }
+                    });
+                })
+                .setNegativeButton("취소", null)
+                .show();
+    }
+
     private void handleAddCourse() {
         String courseName = inputCourseName.getText().toString().trim();
         String attendeesStr = inputAttendees.getText().toString().trim();
@@ -493,7 +579,7 @@ public class TimetableFragment extends Fragment {
             return;
         }
 
-        // Create entry
+        // Create entry (with current semester)
         TimetableEntry entry = new TimetableEntry(
                 UUID.randomUUID().toString(),
                 courseName,
@@ -504,7 +590,8 @@ public class TimetableFragment extends Fragment {
                 selectedEndTime,
                 attendees,
                 professor,
-                note
+                note,
+                currentSemester
         );
 
         // Firestore에 저장

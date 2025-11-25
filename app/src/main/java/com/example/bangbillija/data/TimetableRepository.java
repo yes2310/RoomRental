@@ -49,6 +49,20 @@ public class TimetableRepository {
         });
     }
 
+    public void loadTimetableBySemester(String semester) {
+        firestoreManager.getTimetableEntriesBySemester(semester, new FirestoreManager.FirestoreCallback<List<TimetableEntry>>() {
+            @Override
+            public void onSuccess(List<TimetableEntry> result) {
+                timetableEntries.setValue(result);
+            }
+
+            @Override
+            public void onFailure(Exception e) {
+                error.setValue(e.getMessage());
+            }
+        });
+    }
+
     public void addEntry(TimetableEntry entry, FirestoreManager.FirestoreCallback<Void> callback) {
         firestoreManager.addTimetableEntry(entry, new FirestoreManager.FirestoreCallback<Void>() {
             @Override
@@ -115,6 +129,26 @@ public class TimetableRepository {
 
     public void getTimetableForRoomAndDay(String roomId, DayOfWeek dayOfWeek, FirestoreManager.FirestoreCallback<List<TimetableEntry>> callback) {
         firestoreManager.getTimetableEntriesForRoomAndDay(roomId, dayOfWeek, callback);
+    }
+
+    public void deleteTimetableBySemester(String semester, FirestoreManager.FirestoreCallback<Void> callback) {
+        firestoreManager.deleteTimetableEntriesBySemester(semester, new FirestoreManager.FirestoreCallback<Void>() {
+            @Override
+            public void onSuccess(Void result) {
+                // Fragment will handle reloading the timetable by semester
+                callback.onSuccess(result);
+            }
+
+            @Override
+            public void onFailure(Exception e) {
+                error.setValue(e.getMessage());
+                callback.onFailure(e);
+            }
+        });
+    }
+
+    public void getAllSemesters(FirestoreManager.FirestoreCallback<List<String>> callback) {
+        firestoreManager.getAllSemesters(callback);
     }
 
     public void refresh() {
