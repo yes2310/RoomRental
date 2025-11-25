@@ -34,6 +34,7 @@ public class CalendarFragment extends Fragment {
     private AuthManager authManager;
     private MyReservationsAdapter reservationAdapter;
     private List<Reservation> allReservations = new ArrayList<>();
+    private List<Room> allRooms = new ArrayList<>();
     private LocalDate selectedDate = null;
     private final DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("yyyy년 M월 d일 (E)", Locale.KOREAN);
 
@@ -54,7 +55,10 @@ public class CalendarFragment extends Fragment {
 
         // Rooms 데이터 로드를 위해 observe
         viewModel.getRooms().observe(getViewLifecycleOwner(), rooms -> {
-            // Rooms 데이터가 로드되면 자동으로 업데이트됨
+            if (rooms != null) {
+                allRooms = rooms;
+                android.util.Log.d("CalendarFragment", "Rooms loaded: " + rooms.size());
+            }
         });
 
         setupRecyclerView();
@@ -66,19 +70,28 @@ public class CalendarFragment extends Fragment {
         reservationAdapter = new MyReservationsAdapter(new MyReservationsAdapter.ReservationClickListener() {
             @Override
             public void onPrimaryAction(Reservation reservation) {
+                android.util.Log.d("CalendarFragment", "onPrimaryAction called for reservation: " + reservation.getId());
                 viewModel.focusReservation(reservation);
 
                 // 상세보기 화면을 위해 Room 정보도 설정
-                List<Room> rooms = viewModel.getRooms().getValue();
-                if (rooms != null) {
-                    Room matchingRoom = rooms.stream()
+                android.util.Log.d("CalendarFragment", "Rooms list size: " + allRooms.size());
+
+                if (!allRooms.isEmpty()) {
+                    android.util.Log.d("CalendarFragment", "Looking for roomId: " + reservation.getRoomId());
+                    Room matchingRoom = allRooms.stream()
                             .filter(r -> r.getId().equals(reservation.getRoomId()))
                             .findFirst()
                             .orElse(null);
 
+                    android.util.Log.d("CalendarFragment", "Matching room found: " + (matchingRoom != null ? matchingRoom.getName() : "null"));
+
                     if (matchingRoom != null) {
                         viewModel.selectRoom(matchingRoom);
+                    } else {
+                        android.util.Log.e("CalendarFragment", "Room not found for roomId: " + reservation.getRoomId());
                     }
+                } else {
+                    android.util.Log.e("CalendarFragment", "Rooms list is empty!");
                 }
 
                 if (getActivity() instanceof Navigator) {
