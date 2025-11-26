@@ -356,8 +356,9 @@ public class TimetableFragment extends Fragment {
                 // 존재하지 않으면 새로 생성
                 android.util.Log.d("TimetableFragment", "Creating new room: " + roomId);
 
-                // 강의실명에서 건물명 추출 (예: "공학관 301호" -> "공학관")
+                // 강의실명에서 건물명 및 층수 추출 (예: "공학관 301호" -> "공학관", "3층")
                 String building = extractBuilding(roomName);
+                String floor = extractFloor(roomName);
 
                 // 새 강의실 생성
                 Room newRoom = new Room(
@@ -365,7 +366,7 @@ public class TimetableFragment extends Fragment {
                     building,
                     roomName,
                     capacity,
-                    "N/A", // 층 정보는 없으므로 기본값
+                    floor, // 강의실명에서 자동 추출된 층수
                     new ArrayList<>(), // 시설 정보는 없으므로 빈 리스트
                     RoomStatus.AVAILABLE
                 );
@@ -412,6 +413,44 @@ public class TimetableFragment extends Fragment {
         }
 
         return roomName; // 파싱 실패 시 전체 이름 반환
+    }
+
+    /**
+     * 강의실명에서 층수 추출
+     * 예: "공학관 101호" -> "1층"
+     * 예: "IT관 1201호" -> "12층"
+     */
+    private String extractFloor(String roomName) {
+        if (roomName == null || roomName.isEmpty()) {
+            return "N/A";
+        }
+
+        // 숫자만 추출
+        StringBuilder numberStr = new StringBuilder();
+        for (int i = 0; i < roomName.length(); i++) {
+            char c = roomName.charAt(i);
+            if (Character.isDigit(c)) {
+                numberStr.append(c);
+            }
+        }
+
+        // 숫자가 없으면 N/A
+        if (numberStr.length() == 0) {
+            return "N/A";
+        }
+
+        String roomNumber = numberStr.toString();
+
+        // 3자리 이상이면 앞자리(들)이 층수
+        // 예: 101 -> 1층, 301 -> 3층, 1201 -> 12층
+        if (roomNumber.length() >= 3) {
+            // 마지막 2자리를 제외한 나머지가 층수
+            String floor = roomNumber.substring(0, roomNumber.length() - 2);
+            return floor + "층";
+        }
+
+        // 2자리 이하면 1층으로 간주
+        return "1층";
     }
 
     private void showRoomPicker() {
