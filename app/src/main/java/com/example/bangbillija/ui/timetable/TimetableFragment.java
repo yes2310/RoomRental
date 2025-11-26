@@ -555,12 +555,15 @@ public class TimetableFragment extends Fragment {
         new AlertDialog.Builder(requireContext())
                 .setTitle("학기 삭제")
                 .setMessage("'" + currentSemester + "' 학기의 모든 시간표를 삭제하시겠습니까?\n\n" +
+                        "⚠️ 이 학기에만 사용된 강의실도 함께 삭제됩니다.\n" +
                         "⚠️ 이 작업은 되돌릴 수 없습니다.")
                 .setPositiveButton("삭제", (dialog, which) -> {
                     timetableRepository.deleteTimetableBySemester(currentSemester, new FirestoreManager.FirestoreCallback<Void>() {
                         @Override
                         public void onSuccess(Void result) {
                             Toast.makeText(requireContext(), currentSemester + " 학기가 삭제되었습니다", Toast.LENGTH_SHORT).show();
+                            // 강의실 목록 새로고침 (삭제된 강의실 반영)
+                            roomRepository.refresh();
                             // 현재 학기로 재설정
                             currentSemester = getCurrentSemester();
                             buttonSelectSemester.setText(currentSemester);
