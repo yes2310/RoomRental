@@ -75,8 +75,11 @@ public class TimetableFragment extends Fragment {
 
     private ActivityResultLauncher<Intent> filePickerLauncher;
 
-    // 초기화 블록에서 ActivityResultLauncher 등록
-    {
+    @Override
+    public void onCreate(@Nullable Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+
+        // ActivityResultLauncher는 반드시 onCreate에서 등록해야 함
         filePickerLauncher = registerForActivityResult(
                 new ActivityResultContracts.StartActivityForResult(),
                 result -> {
