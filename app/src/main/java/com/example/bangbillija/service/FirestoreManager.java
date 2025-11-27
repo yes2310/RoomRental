@@ -566,15 +566,20 @@ public class FirestoreManager {
                     android.util.Log.d("FirestoreManager",
                         "Found " + querySnapshot.size() + " remaining timetable entries");
 
-                    // 다른 학기에서 사용 중인 강의실 ID 수집
+                    // 다른 학기에서 사용 중인 강의실 ID 수집 (학기가 null인 항목은 제외)
                     java.util.Set<String> usedRoomIds = new java.util.HashSet<>();
                     for (DocumentSnapshot doc : querySnapshot.getDocuments()) {
                         String roomId = doc.getString("roomId");
                         String semester = doc.getString("semester");
-                        if (roomId != null && !roomId.isEmpty()) {
+
+                        // 학기가 null이 아닌 경우만 사용 중으로 간주
+                        if (roomId != null && !roomId.isEmpty() && semester != null) {
                             usedRoomIds.add(roomId);
                             android.util.Log.d("FirestoreManager",
                                 "Room " + roomId + " is still used in semester " + semester);
+                        } else if (semester == null) {
+                            android.util.Log.d("FirestoreManager",
+                                "Ignoring room " + roomId + " with null semester (invalid data)");
                         }
                     }
 
