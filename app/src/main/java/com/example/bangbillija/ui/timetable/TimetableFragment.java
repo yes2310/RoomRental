@@ -73,17 +73,22 @@ public class TimetableFragment extends Fragment {
 
     private String currentSemester;  // 현재 선택된 학기
 
-    private final ActivityResultLauncher<Intent> filePickerLauncher = registerForActivityResult(
-            new ActivityResultContracts.StartActivityForResult(),
-            result -> {
-                if (result.getResultCode() == android.app.Activity.RESULT_OK && result.getData() != null) {
-                    Uri uri = result.getData().getData();
-                    if (uri != null) {
-                        showSemesterSelectionDialog(uri);
+    private ActivityResultLauncher<Intent> filePickerLauncher;
+
+    // 초기화 블록에서 ActivityResultLauncher 등록
+    {
+        filePickerLauncher = registerForActivityResult(
+                new ActivityResultContracts.StartActivityForResult(),
+                result -> {
+                    if (result.getResultCode() == android.app.Activity.RESULT_OK && result.getData() != null) {
+                        Uri uri = result.getData().getData();
+                        if (uri != null) {
+                            showSemesterSelectionDialog(uri);
+                        }
                     }
                 }
-            }
-    );
+        );
+    }
 
     @Nullable
     @Override
