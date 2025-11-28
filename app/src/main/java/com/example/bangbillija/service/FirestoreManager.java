@@ -516,6 +516,10 @@ public class FirestoreManager {
                         }
                     }
 
+                    android.util.Log.d("FirestoreManager",
+                        "Deleting semester " + semester + ", found " + querySnapshot.size() +
+                        " timetable entries with rooms: " + roomIdsToCheck);
+
                     // 2단계: 시간표 삭제
                     com.google.firebase.firestore.WriteBatch batch = db.batch();
                     for (DocumentSnapshot doc : querySnapshot.getDocuments()) {
@@ -523,12 +527,22 @@ public class FirestoreManager {
                     }
                     batch.commit()
                             .addOnSuccessListener(aVoid -> {
+                                android.util.Log.d("FirestoreManager",
+                                    "Successfully deleted " + querySnapshot.size() + " timetable entries for semester " + semester);
                                 // 3단계: 다른 학기에서 사용되지 않는 강의실 삭제
                                 deleteUnusedRooms(roomIdsToCheck, semester, callback);
                             })
-                            .addOnFailureListener(callback::onFailure);
+                            .addOnFailureListener(e -> {
+                                android.util.Log.e("FirestoreManager",
+                                    "Failed to delete timetable entries for semester " + semester, e);
+                                callback.onFailure(e);
+                            });
                 })
-                .addOnFailureListener(callback::onFailure);
+                .addOnFailureListener(e -> {
+                    android.util.Log.e("FirestoreManager",
+                        "Failed to query timetable entries for semester " + semester, e);
+                    callback.onFailure(e);
+                });
     }
 
     /**
@@ -536,22 +550,36 @@ public class FirestoreManager {
      */
     private void deleteUnusedRooms(java.util.Set<String> roomIds, String deletedSemester, FirestoreCallback<Void> callback) {
         if (roomIds.isEmpty()) {
+            android.util.Log.d("FirestoreManager",
+                "No rooms to check for deletion (semester " + deletedSemester + " had no rooms)");
             callback.onSuccess(null);
             return;
         }
+
+        android.util.Log.d("FirestoreManager",
+            "Checking if rooms can be deleted: " + roomIds);
 
         // 모든 시간표 조회 (삭제된 학기의 시간표는 이미 삭제됨)
         db.collection(COLLECTION_TIMETABLE)
                 .get()
                 .addOnSuccessListener(querySnapshot -> {
+                    android.util.Log.d("FirestoreManager",
+                        "Found " + querySnapshot.size() + " remaining timetable entries");
+
                     // 다른 학기에서 사용 중인 강의실 ID 수집
                     java.util.Set<String> usedRoomIds = new java.util.HashSet<>();
                     for (DocumentSnapshot doc : querySnapshot.getDocuments()) {
                         String roomId = doc.getString("roomId");
+                        String semester = doc.getString("semester");
                         if (roomId != null && !roomId.isEmpty()) {
                             usedRoomIds.add(roomId);
+                            android.util.Log.d("FirestoreManager",
+                                "Room " + roomId + " is still used in semester " + semester);
                         }
                     }
+
+                    android.util.Log.d("FirestoreManager",
+                        "Rooms still in use: " + usedRoomIds);
 
                     // 다른 학기 시간표에서 사용되지 않는 강의실 찾기
                     List<String> roomsToDelete = new ArrayList<>();
@@ -569,6 +597,9 @@ public class FirestoreManager {
                         return;
                     }
 
+                    android.util.Log.d("FirestoreManager",
+                        "Will delete " + roomsToDelete.size() + " unused rooms: " + roomsToDelete);
+
                     com.google.firebase.firestore.WriteBatch deleteBatch = db.batch();
                     for (String roomId : roomsToDelete) {
                         deleteBatch.delete(db.collection(COLLECTION_ROOMS).document(roomId));
@@ -576,12 +607,20 @@ public class FirestoreManager {
                     deleteBatch.commit()
                             .addOnSuccessListener(aVoid -> {
                                 android.util.Log.d("FirestoreManager",
-                                    "Deleted " + roomsToDelete.size() + " unused rooms: " + roomsToDelete);
+                                    "Successfully deleted " + roomsToDelete.size() + " unused rooms: " + roomsToDelete);
                                 callback.onSuccess(null);
                             })
-                            .addOnFailureListener(callback::onFailure);
+                            .addOnFailureListener(e -> {
+                                android.util.Log.e("FirestoreManager",
+                                    "Failed to delete unused rooms", e);
+                                callback.onFailure(e);
+                            });
                 })
-                .addOnFailureListener(callback::onFailure);
+                .addOnFailureListener(e -> {
+                    android.util.Log.e("FirestoreManager",
+                        "Failed to query remaining timetable entries", e);
+                    callback.onFailure(e);
+                });
     }
 
     public void getAllSemesters(FirestoreCallback<List<String>> callback) {
