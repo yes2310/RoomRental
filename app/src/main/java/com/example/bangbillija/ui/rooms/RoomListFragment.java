@@ -162,20 +162,27 @@ public class RoomListFragment extends Fragment implements RoomListAdapter.RoomCl
     }
 
     private void showAdminMenuDialog(Room room) {
-        String[] options = {"강의실 수정", "QR 코드 생성", "강의실 삭제"};
+        String[] options = {"예약하기", "강의실 수정", "QR 코드 생성", "강의실 삭제"};
 
         new MaterialAlertDialogBuilder(requireContext())
                 .setTitle(room.getName() + " 관리")
                 .setItems(options, (dialog, which) -> {
                     if (which == 0) {
+                        // 예약하기
+                        if (getActivity() instanceof Navigator) {
+                            viewModel.selectRoom(room);
+                            viewModel.focusReservation(null);
+                            ((Navigator) getActivity()).openCreateReservation();
+                        }
+                    } else if (which == 1) {
                         // 강의실 수정
                         if (getActivity() instanceof Navigator) {
                             ((Navigator) getActivity()).openEditRoom(room);
                         }
-                    } else if (which == 1) {
+                    } else if (which == 2) {
                         // QR 코드 생성
                         showRoomQRCodeDialog(room);
-                    } else if (which == 2) {
+                    } else if (which == 3) {
                         // 강의실 삭제
                         showDeleteRoomConfirmDialog(room);
                     }
