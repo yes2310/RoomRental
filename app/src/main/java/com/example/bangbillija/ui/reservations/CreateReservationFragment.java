@@ -507,7 +507,7 @@ public class CreateReservationFragment extends Fragment {
                         selectedRoom.getId(),
                         selectedRoom.getName(),
                         title,
-                        ownerName,
+                        userId,  // owner 필드는 userId로 설정 (필터링에 사용)
                         studentId,  // 학번 추가
                         selectedDate,
                         selectedStartTime,
