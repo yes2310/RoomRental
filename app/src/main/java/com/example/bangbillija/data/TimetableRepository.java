@@ -96,15 +96,14 @@ public class TimetableRepository {
             public void onSuccess(Void result) {
                 // 관리자에게 알림 생성
                 String title = "새로운 시간표 등록";
-                String message = String.format("%s - %s(%s) %s %s~%s",
+                String message = String.format("%s - %s %s %s~%s",
                         entry.getRoomName(),
                         entry.getCourseName(),
-                        entry.getCourseCode(),
                         entry.getDayOfWeek(),
                         entry.getStartTime(),
                         entry.getEndTime());
 
-                firestoreManager.createNotification(title, message, "timetable", entry.getEntryId(), new FirestoreManager.FirestoreCallback<Void>() {
+                firestoreManager.createNotification(title, message, "timetable", entry.getId(), new FirestoreManager.FirestoreCallback<Void>() {
                     @Override
                     public void onSuccess(Void notifResult) {
                         // 알림 생성 성공 (무시 가능)
