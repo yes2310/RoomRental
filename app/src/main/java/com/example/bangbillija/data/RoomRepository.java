@@ -90,10 +90,9 @@ public class RoomRepository {
             public void onSuccess(Void result) {
                 // 관리자에게 알림 생성
                 String title = "새로운 강의실 등록";
-                String message = String.format("%s (수용인원: %d명, %s)",
+                String message = String.format("%s (수용인원: %d명)",
                         room.getName(),
-                        room.getCapacity(),
-                        room.getStatus().getDisplayName());
+                        room.getCapacity());
 
                 firestoreManager.createNotification(title, message, "room", room.getRoomId(), new FirestoreManager.FirestoreCallback<Void>() {
                     @Override
