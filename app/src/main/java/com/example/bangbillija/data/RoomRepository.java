@@ -94,7 +94,7 @@ public class RoomRepository {
                         room.getName(),
                         room.getCapacity());
 
-                firestoreManager.createNotification(title, message, "room", room.getRoomId(), new FirestoreManager.FirestoreCallback<Void>() {
+                firestoreManager.createNotification(title, message, "room", room.getId(), new FirestoreManager.FirestoreCallback<Void>() {
                     @Override
                     public void onSuccess(Void notifResult) {
                         // 알림 생성 성공 (무시 가능)
